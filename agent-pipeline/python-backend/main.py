@@ -110,8 +110,17 @@ async def approve(run_id: str, req: Request):
         return JSONResponse({"error": "Run not found"}, status_code=404)
     if not s.get("awaiting_approval"):
         return JSONResponse({"error": "Not awaiting approval"}, status_code=400)
-    s["approval"] = bool(body.get("approved"))
-    return JSONResponse({"ok": True, "approved": s["approval"]})
+
+    feedback = body.get("feedback")
+    if feedback:
+        s["user_feedback"] = feedback
+        s["approval"] = None
+        s["awaiting_approval"] = False
+        return JSONResponse({"ok": True, "feedback": feedback})
+    else:
+        s["approval"] = bool(body.get("approved"))
+        s["awaiting_approval"] = False
+        return JSONResponse({"ok": True, "approved": s["approval"]})
 
 # ── POST /api/pipeline/select-links/:runId — Link selection gate ─────────────
 @app.post("/api/pipeline/select-links/{run_id}")

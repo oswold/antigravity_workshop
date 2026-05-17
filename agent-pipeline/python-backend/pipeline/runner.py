@@ -18,6 +18,8 @@ async def run_pipeline_graph(run_id: str, topic: str, days: int, model: str, gra
         "research_data": [],
         "newsletter": "",
         "approval": None,
+        "user_feedback": None,
+        "revision_count": 0,
         "error": None,
     }
 

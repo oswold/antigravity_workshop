@@ -31,17 +31,29 @@ def write_node(state: dict) -> dict:
     topic        = state["topic"]
     model        = state.get("model", "gemini")
     research     = state.get("research_data", [])
+    user_feedback = state.get("user_feedback")
 
-    emit(run_id, {
-        "type": "step", "step": "write", "status": "in_progress",
-        "message": f"✍️ Writer Agent — generating newsletter with {model}...",
-    })
-
-    summaries = "\n\n".join(
-        f"Source [{r.get('type','web').upper()}]: {r.get('title', r.get('url',''))}\n{r.get('summary','')[:1500]}"
-        for r in research
-    )
-    user_prompt = f"Topic: {topic}\n\nResearch:\n{summaries}\n\nWrite the newsletter now."
+    if user_feedback:
+        emit(run_id, {
+            "type": "step", "step": "write", "status": "in_progress",
+            "message": f"✍️ Writer Agent — revising newsletter based on feedback...",
+        })
+        user_prompt = (
+            f"You are revising the draft of 'AI Pulse Weekly' for {topic}.\n\n"
+            f"Previous Draft:\n{state.get('newsletter', '')}\n\n"
+            f"User Feedback for Revision: {user_feedback}\n\n"
+            f"Write the revised newsletter now, incorporating all feedback and preserving correct markdown layout."
+        )
+    else:
+        emit(run_id, {
+            "type": "step", "step": "write", "status": "in_progress",
+            "message": f"✍️ Writer Agent — generating newsletter with {model}...",
+        })
+        summaries = "\n\n".join(
+            f"Source [{r.get('type','web').upper()}]: {r.get('title', r.get('url',''))}\n{r.get('summary','')[:1500]}"
+            for r in research
+        )
+        user_prompt = f"Topic: {topic}\n\nResearch:\n{summaries}\n\nWrite the newsletter now."
 
     newsletter = _call_llm(model, topic, user_prompt)
 
@@ -50,11 +62,12 @@ def write_node(state: dict) -> dict:
     s["newsletter"] = newsletter
     s["awaiting_approval"] = True
     s["approval"] = None
+    s["user_feedback"] = None
 
     emit(run_id, {"type": "step", "step": "write", "status": "done"})
     emit(run_id, {"type": "newsletter_ready", "content": newsletter})
 
-    return {**state, "newsletter": newsletter}
+    return {**state, "newsletter": newsletter, "user_feedback": None}
 
 
 def _call_llm(model: str, topic: str, user_prompt: str) -> str:

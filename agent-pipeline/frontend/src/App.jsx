@@ -40,6 +40,7 @@ export default function App() {
   const [newsletter, setNewsletter]     = useState('');
   const [awaitingApproval, setAwaitingApproval] = useState(false);
   const [completed, setCompleted]       = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
   // Link-review state
   const [awaitingLinks, setAwaitingLinks] = useState(false);
   const [allLinks, setAllLinks]         = useState([]);
@@ -126,6 +127,18 @@ export default function App() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ approved }),
+    });
+  };
+
+  const handleRevise = async () => {
+    if (!feedbackText.trim()) return;
+    setAwaitingApproval(false);
+    const fb = feedbackText;
+    setFeedbackText('');
+    await fetch(`${API}/approve/${runId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedback: fb }),
     });
   };
 
@@ -385,12 +398,50 @@ export default function App() {
               <div className="approval-label">GUARDRAIL — Human Approval Required</div>
               <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>
                 Review the newsletter above. Approve to publish to GitHub Pages, or reject to stop.
+                To request modifications, type your feedback below and click "Request Revision".
               </p>
+              
+              {/* Revision feedback area */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                <textarea 
+                  style={{
+                    width: '100%',
+                    minHeight: '60px',
+                    background: '#1a1a24',
+                    border: '1px solid var(--border)',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    color: 'var(--text)',
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder="e.g., Make the third pick sound more conversational, add key emojis, or shorten the summary..."
+                  value={feedbackText}
+                  onChange={e => setFeedbackText(e.target.value)}
+                />
+                <button 
+                  className="btn btn-outline" 
+                  onClick={handleRevise}
+                  disabled={!feedbackText.trim()}
+                  style={{ 
+                    width: '100%', 
+                    borderColor: 'var(--amber)', 
+                    color: 'var(--amber)',
+                    opacity: feedbackText.trim() ? 1 : 0.5,
+                    cursor: feedbackText.trim() ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  🔄 Request Revision
+                </button>
+              </div>
+
               <div className="approval-btns">
-                <button className="btn btn-success" onClick={() => handleApprove(true)}>
+                <button className="btn btn-success" onClick={() => handleApprove(true)} style={{ flex: 1 }}>
                   ✅ Approve & Publish
                 </button>
-                <button className="btn btn-danger" onClick={() => handleApprove(false)}>
+                <button className="btn btn-danger" onClick={() => handleApprove(false)} style={{ flex: 1 }}>
                   ❌ Reject
                 </button>
               </div>
