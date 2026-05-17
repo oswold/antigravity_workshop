@@ -13,7 +13,9 @@ This file (`GEMINI.md`) provides persistent background context and instructions 
 3. **Domain Restriction:** Act as a Tech Researcher. Only process data related to Technology, AI, and Productivity. If user data contains personal gossip or financial info, immediately halt the chain and output `REJECTED_TOPIC`. Enforced in `pipeline/guardrails/pii_guard.py`.
 
 ## Available Resources & Skills
-- **Skills:** `infographic_generator` (located at `.agents/skills/infographic_generator/SKILL.md`) — generates Mermaid.js structural infographics from content summaries.
+- **Skills:**
+  - `infographic_generator` (located at `.agents/skills/infographic_generator/SKILL.md`) — generates Mermaid.js structural infographics from content summaries.
+  - `deploy_pipeline` (located at `.agents/skills/deploy_pipeline/SKILL.md`) — automates system verification and launches the full stack (FastAPI backend, React dashboard, WhatsApp Bridge) via Docker Compose or native shells.
 - **MCP Integrations:**
   - `WhatsApp Bridge` — Baileys-based Node.js HTTP bridge at `http://localhost:3002` (QR auth once)
   - `YouTube Transcript MCP` — `npx -y @kimtaeyoon83/mcp-server-youtube-transcript` (no auth)
