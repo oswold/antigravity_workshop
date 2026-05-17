@@ -1,4 +1,7 @@
 {
+  "sandbox": {
+    "enabled": true
+  },
   "mcpServers": {
     "whatsapp": {
       "command": "uv",

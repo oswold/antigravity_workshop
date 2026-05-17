@@ -144,6 +144,26 @@ git clone <repository_url>
 cd podcasts
 ```
 
+---
+
+### Alternative: Docker Setup 🐳
+If you prefer not to install Node.js and Python locally, you can run the entire stack using Docker:
+
+1. Copy `.env.example` to `.env` in the root folder and fill in your keys.
+2. Build and start the containers in the background:
+   ```bash
+   docker-compose up -d --build
+   ```
+3. The WhatsApp bridge needs you to scan a QR code. Attach to it:
+   ```bash
+   docker attach whatsapp_bridge
+   # Scan the QR code with your phone.
+   # Then press Ctrl+P, Ctrl+Q to detach and leave it running.
+   ```
+4. Access the dashboard at `http://localhost:5173`. You can skip directly to **Step 6**.
+
+---
+
 ### Step 2: WhatsApp Bridge Setup
 The bridge authenticates with WhatsApp using a QR code on first run and saves the session permanently.
 
