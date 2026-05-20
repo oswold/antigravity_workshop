@@ -21,6 +21,9 @@ class PipelineState(TypedDict):
     user_feedback: str | None   # HITL user revision feedback
     revision_count: int         # Track revision iterations
     error: str | None
+    include_uncrawlable: bool   # Whether to include failed/uncrawlable links in references
+    uncrawlable_links: list[str] # List of links that failed checking
+    research_cache: dict        # Cache of pre-fetched research results
 
 
 def build_graph():

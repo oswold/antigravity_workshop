@@ -93,6 +93,62 @@ if ($ApiKeyCheck -match "gemini_api_key_from_ai_studio" -or [string]::IsNullOrEm
 
 # --- FUNCTIONS ---
 
+function Ensure-LocalGemma {
+    Write-Host ""
+    Write-Host "--------------------------------------------------------------------------------" -ForegroundColor Gray
+    Write-Host "🦙 LOCAL GEMMA (OLLAMA) VERIFICATION" -ForegroundColor Cyan
+    Write-Host "--------------------------------------------------------------------------------" -ForegroundColor Gray
+
+    # 1. Check if ollama command is available
+    if (-not (Get-Command "ollama" -ErrorAction SilentlyContinue)) {
+        Write-Host "[!] Ollama is not installed or not in System PATH." -ForegroundColor Yellow
+        Write-Host "    If you plan to use local models, please download Ollama from: https://ollama.com/" -ForegroundColor Yellow
+        return
+    }
+
+    # 2. Check if Ollama service is listening
+    $ActiveConnections = Get-NetTCPConnection -ErrorAction SilentlyContinue
+    $OllamaPort = 11434
+    $OllamaConn = $ActiveConnections | Where-Object { $_.LocalPort -eq $OllamaPort } | Select-Object -First 1
+
+    if (-not $OllamaConn) {
+        $Response = Read-Host "[?] Ollama server is NOT running. Would you like to start it now? (y/n)"
+        if ($Response -eq 'y' -or $Response -eq 'Y') {
+            Write-Host "[*] Starting Ollama server in background..." -ForegroundColor Gray
+            Start-Process -FilePath "ollama" -ArgumentList "serve" -NoNewWindow
+            # Wait a few seconds for it to start
+            for ($i = 1; $i -le 5; $i++) {
+                Start-Sleep -Seconds 1
+                $ActiveConnections = Get-NetTCPConnection -ErrorAction SilentlyContinue
+                $OllamaConn = $ActiveConnections | Where-Object { $_.LocalPort -eq $OllamaPort } | Select-Object -First 1
+                if ($OllamaConn) { break }
+            }
+        }
+    }
+
+    # Re-check connection
+    if ($OllamaConn -or (Get-NetTCPConnection -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -eq $OllamaPort })) {
+        Write-Host "[+] Ollama server is running." -ForegroundColor Green
+        
+        # 3. Check for gemma/gemma3 model
+        $Models = ollama list
+        $HasGemma = $Models -like "*gemma*"
+        
+        if (-not $HasGemma) {
+            $Response = Read-Host "[?] Gemma model is not found in Ollama. Would you like to pull 'gemma' (5GB) now? (y/n)"
+            if ($Response -eq 'y' -or $Response -eq 'Y') {
+                Write-Host "[*] Pulling gemma model (this may take a few minutes)..." -ForegroundColor Yellow
+                ollama pull gemma
+            }
+        } else {
+            Write-Host "[+] Local Gemma model is installed." -ForegroundColor Green
+        }
+    } else {
+        Write-Host "[!] Ollama server could not be started or is not running." -ForegroundColor Yellow
+    }
+    Write-Host "--------------------------------------------------------------------------------" -ForegroundColor Gray
+}
+
 function Show-Ports {
     Write-Host "[*] Checking port status for stack services..." -ForegroundColor Gray
     $Ports = @{ "8000" = "FastAPI Backend"; "5173" = "Vite React Frontend"; "3002" = "WhatsApp Bridge" }
@@ -167,6 +223,11 @@ function Deploy-Docker {
         Write-Host "Ctrl+P, Ctrl+Q" -ForegroundColor Cyan -NoNewline
         Write-Host " to safely detach from the container terminal." -ForegroundColor Yellow
         Write-Host "================================================================================" -ForegroundColor Green
+
+        $OllamaCheck = Read-Host "Would you like to verify/start local Gemma via Ollama? (y/n)"
+        if ($OllamaCheck -eq 'y' -or $OllamaCheck -eq 'Y') {
+            Ensure-LocalGemma
+        }
     } else {
         Write-Host "[!] Docker deployment failed. See logs above." -ForegroundColor Red
     }
@@ -257,6 +318,11 @@ function Deploy-Local {
     Write-Host "   2. Monitor the 'FastAPI Backend' console for LangGraph pipeline execution logs." -ForegroundColor Yellow
     Write-Host "   3. Keep the windows open. To stop everything, select Option 3 in this menu." -ForegroundColor Yellow
     Write-Host "================================================================================" -ForegroundColor Green
+
+    $OllamaCheck = Read-Host "Would you like to verify/start local Gemma via Ollama? (y/n)"
+    if ($OllamaCheck -eq 'y' -or $OllamaCheck -eq 'Y') {
+        Ensure-LocalGemma
+    }
 }
 
 # --- INTERACTIVE MENU LOOP ---

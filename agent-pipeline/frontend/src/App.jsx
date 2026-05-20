@@ -45,6 +45,7 @@ export default function App() {
   const [awaitingLinks, setAwaitingLinks] = useState(false);
   const [allLinks, setAllLinks]         = useState([]);
   const [checkedLinks, setCheckedLinks] = useState({});
+  const [includeUncrawlable, setIncludeUncrawlable] = useState(true);
 
   const logsEndRef = useRef(null);
   const eventSourceRef = useRef(null);
@@ -81,7 +82,7 @@ export default function App() {
         const links = event.links || [];
         setAllLinks(links);
         const init = {};
-        links.forEach(l => { init[l.url] = true; });
+        links.forEach(l => { init[l.url] = l.crawlable !== false; });
         setCheckedLinks(init);
         setAwaitingLinks(true);
       }
@@ -100,7 +101,7 @@ export default function App() {
   const handleRun = async () => {
     setLogs([]); setStepStatus({}); setStepDetail({});
     setNewsletter(''); setAwaitingApproval(false); setCompleted(false);
-    setAwaitingLinks(false); setAllLinks([]); setCheckedLinks({});
+    setAwaitingLinks(false); setAllLinks([]); setCheckedLinks({}); setIncludeUncrawlable(true);
     setRunning(true);
 
     const res = await fetch(`${API}/run`, {
@@ -150,7 +151,7 @@ export default function App() {
     await fetch(`${API}/select-links/${runId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ links: selected }),
+      body: JSON.stringify({ links: selected, include_uncrawlable: includeUncrawlable }),
     });
   };
 
@@ -374,11 +375,17 @@ export default function App() {
                   <div key={link.url} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12 }}>
                     <input type="checkbox" id={link.url}
                       checked={!!checkedLinks[link.url]}
+                      disabled={link.crawlable === false}
                       onChange={e => setCheckedLinks(p => ({ ...p, [link.url]: e.target.checked }))}
-                      style={{ marginTop: 2, flexShrink: 0 }} />
-                    <label htmlFor={link.url} style={{ color: 'var(--text)', cursor: 'pointer' }}>
+                      style={{ marginTop: 2, flexShrink: 0, cursor: link.crawlable === false ? 'not-allowed' : 'pointer' }} />
+                    <label htmlFor={link.url} style={{ color: link.crawlable === false ? 'var(--text-dim)' : 'var(--text)', cursor: link.crawlable === false ? 'not-allowed' : 'pointer' }}>
                       <a href={link.url} target="_blank" rel="noreferrer"
-                        style={{ color: 'var(--cyan)', wordBreak: 'break-all' }}>{link.url}</a>
+                        style={{ color: link.crawlable === false ? 'var(--text-dim)' : 'var(--cyan)', textDecoration: link.crawlable === false ? 'line-through' : 'none', wordBreak: 'break-all' }}>{link.url}</a>
+                      {link.crawlable === false && (
+                        <span style={{ color: 'var(--amber)', fontSize: 11, marginLeft: 8 }} title={link.error_message}>
+                          ⚠️ Uncrawlable ({link.error_message || 'Fetch failed'})
+                        </span>
+                      )}
                       <div style={{ color: 'var(--text-dim)', fontSize: 11, marginTop: 2 }}>
                         {link.source_text} · {link.date}
                       </div>
@@ -386,6 +393,20 @@ export default function App() {
                   </div>
                 ))}
               </div>
+
+              {/* Checkbox for including uncrawlable links */}
+              {allLinks.some(link => link.crawlable === false) && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, marginTop: 12, marginBottom: 12, padding: '8px', background: '#1c1c28', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <input type="checkbox" id="include-uncrawlable"
+                    checked={includeUncrawlable}
+                    onChange={e => setIncludeUncrawlable(e.target.checked)}
+                    style={{ cursor: 'pointer' }} />
+                  <label htmlFor="include-uncrawlable" style={{ color: 'var(--text)', cursor: 'pointer' }}>
+                    📖 Include failed/uncrawlable links in References section
+                  </label>
+                </div>
+              )}
+
               <button className="btn btn-primary" onClick={handleSelectLinks}>
                 ▶ Research {Object.values(checkedLinks).filter(Boolean).length} selected link(s)
               </button>

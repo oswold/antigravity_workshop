@@ -130,6 +130,7 @@ async def select_links(run_id: str, req: Request):
     if not s:
         return JSONResponse({"error": "Run not found"}, status_code=404)
     s["selected_links"] = body.get("links", [])
+    s["include_uncrawlable"] = body.get("include_uncrawlable", False)
     s["awaiting_link_selection"] = False
     return JSONResponse({"ok": True, "count": len(s["selected_links"])})
 

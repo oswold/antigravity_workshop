@@ -86,6 +86,56 @@ fi
 
 # --- FUNCTIONS ---
 
+ensure_local_gemma() {
+    echo ""
+    echo -e "${GRAY}--------------------------------------------------------------------------------${NC}"
+    echo -e "🦙 ${CYAN}LOCAL GEMMA (OLLAMA) VERIFICATION${NC}"
+    echo -e "${GRAY}--------------------------------------------------------------------------------${NC}"
+
+    # 1. Check if ollama command is available
+    if ! command -v ollama &> /dev/null; then
+        echo -e "${YELLOW}[!] Ollama is not installed or not in PATH.${NC}"
+        echo -e "    If you plan to use local models, please download Ollama from: https://ollama.com/"
+        return
+    fi
+
+    # 2. Check if Ollama service is listening
+    if ! lsof -i :11434 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        read -p "[?] Ollama server is NOT running. Would you like to start it now? (y/n): " response
+        if [[ "$response" =~ ^[yY]$ ]]; then
+            echo -e "${GRAY}[*] Starting Ollama server in background...${NC}"
+            ollama serve > /dev/null 2>&1 &
+            # Wait a few seconds for it to start
+            for i in {1..5}; do
+                sleep 1
+                if lsof -i :11434 -sTCP:LISTEN -t >/dev/null 2>&1; then
+                    break
+                fi
+            done
+        fi
+    fi
+
+    # Re-check connection
+    if lsof -i :11434 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        echo -e "${GREEN}[+] Ollama server is running.${NC}"
+        
+        # 3. Check for gemma/gemma3 model
+        models=$(ollama list)
+        if [[ ! "$models" =~ "gemma" ]]; then
+            read -p "[?] Gemma model is not found in Ollama. Would you like to pull 'gemma' (5GB) now? (y/n): " response
+            if [[ "$response" =~ ^[yY]$ ]]; then
+                echo -e "${YELLOW}[*] Pulling gemma model (this may take a few minutes)...${NC}"
+                ollama pull gemma
+            fi
+        else
+            echo -e "${GREEN}[+] Local Gemma model is installed.${NC}"
+        fi
+    else
+        echo -e "${YELLOW}[!] Ollama server could not be started or is not running.${NC}"
+    fi
+    echo -e "${GRAY}--------------------------------------------------------------------------------${NC}"
+}
+
 show_ports() {
     echo -e "${GRAY}[*] Checking port status for stack services...${NC}"
     echo -e "${CYAN}Port | Service                | Status${NC}"
@@ -153,6 +203,11 @@ deploy_docker() {
         echo -e "   ${CYAN}docker attach whatsapp_bridge${NC}"
         echo -e "   Once scanned, press ${CYAN}Ctrl+P, Ctrl+Q${NC} to safely detach from the container."
         echo -e "${GREEN}================================================================================${NC}"
+
+        read -p "Would you like to verify/start local Gemma via Ollama? (y/n): " ollama_check
+        if [[ "$ollama_check" =~ ^[yY]$ ]]; then
+            ensure_local_gemma
+        fi
     else
         echo -e "${RED}[!] Docker deployment failed.${NC}"
     fi
@@ -246,6 +301,11 @@ deploy_local() {
     echo -e ""
     echo -e "🛑 To stop everything, select Option 3 in this menu."
     echo -e "${GREEN}================================================================================${NC}"
+
+    read -p "Would you like to verify/start local Gemma via Ollama? (y/n): " ollama_check
+    if [[ "$ollama_check" =~ ^[yY]$ ]]; then
+        ensure_local_gemma
+    fi
 }
 
 # --- INTERACTIVE MENU LOOP ---

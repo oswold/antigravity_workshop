@@ -33,6 +33,18 @@ def write_node(state: dict) -> dict:
     research     = state.get("research_data", [])
     user_feedback = state.get("user_feedback")
 
+    uncrawlable = state.get("uncrawlable_links", [])
+    include_uncrawlable = state.get("include_uncrawlable", False)
+
+    prompt_suffix = ""
+    if include_uncrawlable and uncrawlable:
+        links_list = "\n".join(f"- {url}" for url in uncrawlable)
+        prompt_suffix = (
+            f"\n\nIMPORTANT: Please add the following URLs directly to the '## 🔗 Resources' section "
+            f"at the end of the newsletter. Do NOT write picks or summaries for them because they could not be crawled:\n"
+            f"{links_list}"
+        )
+
     if user_feedback:
         emit(run_id, {
             "type": "step", "step": "write", "status": "in_progress",
@@ -44,6 +56,8 @@ def write_node(state: dict) -> dict:
             f"User Feedback for Revision: {user_feedback}\n\n"
             f"Write the revised newsletter now, incorporating all feedback and preserving correct markdown layout."
         )
+        if include_uncrawlable and uncrawlable:
+            user_prompt += prompt_suffix
     else:
         emit(run_id, {
             "type": "step", "step": "write", "status": "in_progress",
@@ -53,7 +67,7 @@ def write_node(state: dict) -> dict:
             f"Source [{r.get('type','web').upper()}]: {r.get('title', r.get('url',''))}\n{r.get('summary','')[:1500]}"
             for r in research
         )
-        user_prompt = f"Topic: {topic}\n\nResearch:\n{summaries}\n\nWrite the newsletter now."
+        user_prompt = f"Topic: {topic}\n\nResearch:\n{summaries}{prompt_suffix}\n\nWrite the newsletter now."
 
     newsletter = _call_llm(model, topic, user_prompt)
 
@@ -75,7 +89,7 @@ def _call_llm(model: str, topic: str, user_prompt: str) -> str:
     system   = SYSTEM_PROMPT.replace("{TOPIC}", topic)
 
     if selected in ("ollama", "gemma3", "local"):
-        return _ollama(system, user_prompt)
+        return _ollama(system, user_prompt, selected)
     return _gemini(system, user_prompt)
 
 
@@ -93,9 +107,14 @@ def _gemini(system: str, user_prompt: str) -> str:
     return response.text
 
 
-def _ollama(system: str, user_prompt: str) -> str:
+def _ollama(system: str, user_prompt: str, selected: str) -> str:
     from langchain_ollama import ChatOllama
     from langchain_core.messages import SystemMessage, HumanMessage
-    llm = ChatOllama(model="gemma", base_url="http://localhost:11434", temperature=0.7)
+    import os
+    base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+    model_name = "gemma"
+    if selected == "gemma3":
+        model_name = "gemma3"
+    llm = ChatOllama(model=model_name, base_url=base_url, temperature=0.7)
     resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=user_prompt)])
     return resp.content

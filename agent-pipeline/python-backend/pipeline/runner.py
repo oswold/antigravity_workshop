@@ -21,6 +21,9 @@ async def run_pipeline_graph(run_id: str, topic: str, days: int, model: str, gra
         "user_feedback": None,
         "revision_count": 0,
         "error": None,
+        "include_uncrawlable": False,
+        "uncrawlable_links": [],
+        "research_cache": {},
     }
 
     try:

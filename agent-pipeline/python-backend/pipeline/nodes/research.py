@@ -17,6 +17,7 @@ def is_youtube(url: str) -> bool:
 def research_node(state: dict) -> dict:
     run_id   = state["run_id"]
     links    = state.get("selected_links", [])
+    cache    = state.get("research_cache", {})
 
     emit(run_id, {
         "type": "step", "step": "research", "status": "in_progress",
@@ -26,6 +27,15 @@ def research_node(state: dict) -> dict:
     results = []
     for url in links:
         tool_name = "YouTube Transcript MCP" if is_youtube(url) else "Fetch MCP"
+        
+        if url in cache:
+            results.append(cache[url])
+            emit(run_id, {
+                "type": "mcp_call", "tool": tool_name, "status": "success",
+                "detail": f"{cache[url].get('title', url)[:80]} (from cache)",
+            })
+            continue
+
         emit(run_id, {
             "type": "mcp_call", "tool": tool_name, "status": "calling",
             "detail": url,

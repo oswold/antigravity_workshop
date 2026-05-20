@@ -13,6 +13,9 @@ services:
       - .env
     environment:
       - WHATSAPP_BRIDGE_URL=http://whatsapp:3002
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - whatsapp
     restart: unless-stopped
@@ -38,3 +41,8 @@ services:
     stdin_open: true
     tty: true
     restart: unless-stopped
+    volumes:
+      - whatsapp_auth:/app/auth_info_baileys
+
+volumes:
+  whatsapp_auth:

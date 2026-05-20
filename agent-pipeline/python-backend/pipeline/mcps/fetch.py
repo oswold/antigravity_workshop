@@ -66,4 +66,4 @@ def _call_mcp_tool(cmd: list, tool_name: str, tool_args: dict) -> str:
             continue
 
     proc.kill()
-    raise TimeoutError(f"Fetch MCP timed out for {url}")
+    raise TimeoutError(f"Fetch MCP timed out for {tool_args.get('url', 'unknown URL')}")
