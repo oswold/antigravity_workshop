@@ -12,7 +12,7 @@ Start the bridge first:
 """
 import re
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import os
 BRIDGE_URL   = os.environ.get("WHATSAPP_BRIDGE_URL", "http://localhost:3002")
@@ -73,7 +73,7 @@ def fetch_whatsapp_self_messages(days: int = 7) -> list[dict]:
         if isinstance(ts, dict):              # Baileys Long object
             ts = ts.get("low", 0)
         try:
-            date_str = datetime.utcfromtimestamp(int(ts)).strftime("%Y-%m-%d %H:%M UTC")
+            date_str = datetime.fromtimestamp(int(ts), timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         except Exception:
             date_str = f"message-{i+1}"
 

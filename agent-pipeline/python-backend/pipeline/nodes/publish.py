@@ -3,7 +3,7 @@ Node: publish
 Pushes newsletter to GitHub Pages via REST API + sends via Gmail MCP.
 """
 import os, base64, time
-from datetime import datetime
+from datetime import datetime, timezone
 from state import emit
 import httpx
 
@@ -32,7 +32,7 @@ def publish_node(state: dict) -> dict:
         import hashlib, re
         
         topic = state.get("topic", "Newsletter")
-        date_str = datetime.utcnow().strftime('%Y-%m-%d')
+        date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
         links_str = "".join(sorted(state.get("selected_links", [])))
         links_hash = hashlib.md5(links_str.encode()).hexdigest()[:6]
         topic_slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip("-") or "newsletter"
