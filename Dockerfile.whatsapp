@@ -2,10 +2,14 @@ FROM node:20
 
 WORKDIR /app
 
-COPY agent-pipeline/whatsapp-bridge-js/package*.json ./
+RUN mkdir -p /app/auth_info_baileys && chown -R node:node /app
+
+USER node
+
+COPY --chown=node:node agent-pipeline/whatsapp-bridge-js/package*.json ./
 
 RUN npm install
 
-COPY agent-pipeline/whatsapp-bridge-js .
+COPY --chown=node:node agent-pipeline/whatsapp-bridge-js .
 
 CMD ["npm", "start"]

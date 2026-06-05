@@ -2,11 +2,15 @@ FROM node:20
 
 WORKDIR /app
 
-COPY agent-pipeline/frontend/package*.json ./
+RUN chown node:node /app
+
+USER node
+
+COPY --chown=node:node agent-pipeline/frontend/package*.json ./
 
 RUN npm install
 
-COPY agent-pipeline/frontend .
+COPY --chown=node:node agent-pipeline/frontend .
 
 EXPOSE 5173
 
