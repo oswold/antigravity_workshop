@@ -10,7 +10,7 @@ scheduler = BackgroundScheduler()
 _job = None
 
 
-def schedule_pipeline(expression: str, topic: str, model: str, days: int, graph):
+def schedule_pipeline(expression: str, topic: str, model: str, days: int, emails: str, graph):
     global _job
     if _job:
         _job.remove()
@@ -30,7 +30,7 @@ def schedule_pipeline(expression: str, topic: str, model: str, days: int, graph)
         from pipeline.runner import run_pipeline_graph
         run_id = str(uuid4())
         pipeline_states[run_id] = {
-            "run_id": run_id, "topic": topic, "days": days, "model": model,
+            "run_id": run_id, "topic": topic, "days": days, "model": model, "emails": emails,
             "status": "running", "logs": [],
             "awaiting_approval": False, "approval": None,
             "awaiting_link_selection": False, "selected_links": None,
@@ -38,7 +38,7 @@ def schedule_pipeline(expression: str, topic: str, model: str, days: int, graph)
         }
         sse_queues[run_id] = asyncio.Queue()
         loop = asyncio.new_event_loop()
-        loop.run_until_complete(run_pipeline_graph(run_id, topic, days, model, graph))
+        loop.run_until_complete(run_pipeline_graph(run_id, topic, days, model, graph, trigger="cron"))
 
     _job = scheduler.add_job(_run, trigger=trigger, id="pipeline_cron", replace_existing=True)
     print(f"[Cron] Scheduled: {expression} — topic: {topic}")

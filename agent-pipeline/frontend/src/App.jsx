@@ -4,18 +4,18 @@ import { marked } from 'marked';
 const API = '/api/pipeline';
 
 const STEPS = [
-  { key: 'fetch_notes',  icon: '💬', label: 'WhatsApp MCP',   desc: 'Fetch self-messages' },
-  { key: 'link_review',  icon: '🔗', label: 'Link Review',    desc: 'Select links to research' },
-  { key: 'research',     icon: '🔍', label: 'Research Agent',  desc: 'YouTube + Web Fetch MCP' },
-  { key: 'write',        icon: '✍️', label: 'Writer Agent',   desc: 'Generate newsletter' },
-  { key: 'review',       icon: '👤', label: 'Human Review',   desc: 'HITL approval gate' },
-  { key: 'publish',      icon: '🚀', label: 'Publish',         desc: 'GitHub Pages + Gmail' },
+  { key: 'fetch_notes', icon: '💬', label: 'WhatsApp MCP', desc: 'Fetch self-messages' },
+  { key: 'link_review', icon: '🔗', label: 'Link Review', desc: 'Select links to research' },
+  { key: 'research', icon: '🔍', label: 'Research Agent', desc: 'YouTube + Web Fetch MCP' },
+  { key: 'write', icon: '✍️', label: 'Writer Agent', desc: 'Generate newsletter' },
+  { key: 'review', icon: '👤', label: 'Human Review', desc: 'HITL approval gate' },
+  { key: 'publish', icon: '🚀', label: 'Publish', desc: 'GitHub Pages + Gmail' },
 ];
 
 const CRON_PRESETS = [
   { label: 'Every Monday 8am', value: '0 8 * * 1' },
-  { label: 'Daily 7am',        value: '0 7 * * *' },
-  { label: 'Every 30 min',     value: '*/30 * * * *' },
+  { label: 'Daily 7am', value: '0 7 * * *' },
+  { label: 'Every 30 min', value: '*/30 * * * *' },
   { label: 'Every 5 min (test)', value: '*/5 * * * *' },
 ];
 
@@ -25,25 +25,28 @@ const LOG_ICONS = {
 };
 
 export default function App() {
-  const [topic, setTopic]   = useState('AI Agents');
-  const [days, setDays]     = useState(7);
-  const [model, setModel]   = useState('gemini');
+  const [topic, setTopic] = useState('AI Agents');
+  const [days, setDays] = useState(7);
+  const [model, setModel] = useState('gemini');
   const [emails, setEmails] = useState('');
   const [cronExpr, setCronExpr] = useState('0 8 * * 1');
   const [cronActive, setCronActive] = useState(false);
+  const [cronEmails, setCronEmails] = useState('');
 
-  const [runId, setRunId]               = useState(null);
-  const [running, setRunning]           = useState(false);
-  const [stepStatus, setStepStatus]     = useState({});
-  const [stepDetail, setStepDetail]     = useState({});
-  const [logs, setLogs]                 = useState([]);
-  const [newsletter, setNewsletter]     = useState('');
+  const [runId, setRunId] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [stepStatus, setStepStatus] = useState({});
+  const [stepDetail, setStepDetail] = useState({});
+  const [logs, setLogs] = useState([]);
+  const [newsletter, setNewsletter] = useState('');
   const [awaitingApproval, setAwaitingApproval] = useState(false);
-  const [completed, setCompleted]       = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
   // Link-review state
   const [awaitingLinks, setAwaitingLinks] = useState(false);
-  const [allLinks, setAllLinks]         = useState([]);
+  const [allLinks, setAllLinks] = useState([]);
   const [checkedLinks, setCheckedLinks] = useState({});
+  const [includeUncrawlable, setIncludeUncrawlable] = useState(true);
 
   const logsEndRef = useRef(null);
   const eventSourceRef = useRef(null);
@@ -80,7 +83,7 @@ export default function App() {
         const links = event.links || [];
         setAllLinks(links);
         const init = {};
-        links.forEach(l => { init[l.url] = true; });
+        links.forEach(l => { init[l.url] = l.crawlable !== false; });
         setCheckedLinks(init);
         setAwaitingLinks(true);
       }
@@ -99,7 +102,7 @@ export default function App() {
   const handleRun = async () => {
     setLogs([]); setStepStatus({}); setStepDetail({});
     setNewsletter(''); setAwaitingApproval(false); setCompleted(false);
-    setAwaitingLinks(false); setAllLinks([]); setCheckedLinks({});
+    setAwaitingLinks(false); setAllLinks([]); setCheckedLinks({}); setIncludeUncrawlable(true);
     setRunning(true);
 
     const res = await fetch(`${API}/run`, {
@@ -129,6 +132,18 @@ export default function App() {
     });
   };
 
+  const handleRevise = async () => {
+    if (!feedbackText.trim()) return;
+    setAwaitingApproval(false);
+    const fb = feedbackText;
+    setFeedbackText('');
+    await fetch(`${API}/approve/${runId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedback: fb }),
+    });
+  };
+
   // Send selected links to backend
   const handleSelectLinks = async () => {
     setAwaitingLinks(false);
@@ -137,7 +152,7 @@ export default function App() {
     await fetch(`${API}/select-links/${runId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ links: selected }),
+      body: JSON.stringify({ links: selected, include_uncrawlable: includeUncrawlable }),
     });
   };
 
@@ -150,7 +165,7 @@ export default function App() {
       const res = await fetch(`${API}/cron`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ expression: cronExpr, topic, model, days: Number(days) }),
+        body: JSON.stringify({ expression: cronExpr, topic, model, days: Number(days), emails: cronEmails }),
       });
       if (res.ok) setCronActive(true);
     }
@@ -191,26 +206,26 @@ export default function App() {
           <div className="card-title">Pipeline Config</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="field">
-              <label>Research Topic</label>
-              <input value={topic} onChange={e => setTopic(e.target.value)} placeholder="e.g. AI Agents" />
+              <label htmlFor="researchTopic">Research Topic</label>
+              <input id="researchTopic" value={topic} onChange={e => setTopic(e.target.value)} placeholder="e.g. AI Agents" />
             </div>
             <div className="field">
-              <label>Days of notes to fetch</label>
-              <input type="number" min={1} max={30} value={days} onChange={e => setDays(e.target.value)} />
+              <label htmlFor="fetchDays">Days of notes to fetch</label>
+              <input id="fetchDays" type="number" min={1} max={30} value={days} onChange={e => setDays(e.target.value)} />
             </div>
             <div className="field">
-              <label>Writer Agent Model</label>
-              <select value={model} onChange={e => setModel(e.target.value)}>
+              <label htmlFor="writerModel">Writer Agent Model</label>
+              <select id="writerModel" value={model} onChange={e => setModel(e.target.value)}>
                 <option value="gemini">✨ Gemini (cloud)</option>
                 <option value="ollama">🦙 Local Gemma (Ollama)</option>
               </select>
             </div>
             <div className="field">
-              <label>Subscribed Emails (comma-separated)</label>
-              <input value={emails} onChange={e => setEmails(e.target.value)} placeholder="e.g. user@example.com" />
+              <label htmlFor="subscribedEmails">Subscribed Emails (comma-separated)</label>
+              <input id="subscribedEmails" value={emails} onChange={e => setEmails(e.target.value)} placeholder="e.g. user@example.com" />
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="btn btn-primary" style={{flex: 1}} onClick={handleRun} disabled={running}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleRun} disabled={running}>
                 {running ? '⏳ Running...' : '▶ Run'}
               </button>
               {running && (
@@ -227,14 +242,18 @@ export default function App() {
           <div className="card-title">⏰ Cron Scheduler</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="field">
-              <label>Cron Expression</label>
-              <input value={cronExpr} onChange={e => setCronExpr(e.target.value)} style={{ fontFamily: 'var(--mono)', fontSize: 13 }} />
+              <label htmlFor="cronExpression">Cron Expression</label>
+              <input id="cronExpression" value={cronExpr} onChange={e => setCronExpr(e.target.value)} style={{ fontFamily: 'var(--mono)', fontSize: 13 }} />
             </div>
             <div className="cron-presets">
               {CRON_PRESETS.map(p => (
                 <button key={p.value} className={`cron-preset ${cronExpr === p.value ? 'active' : ''}`}
                   onClick={() => setCronExpr(p.value)}>{p.label}</button>
               ))}
+            </div>
+            <div className="field">
+              <label htmlFor="subscribedCronEmails">Subscribed Emails for Cron</label>
+              <input id="subscribedCronEmails" value={cronEmails} onChange={e => setCronEmails(e.target.value)} placeholder="e.g. user@example.com" />
             </div>
             <button className={`btn ${cronActive ? 'btn-danger' : 'btn-outline'} btn-sm`} onClick={handleCron}>
               {cronActive ? '⏹ Stop Cron' : '▶ Schedule Cron'}
@@ -361,11 +380,17 @@ export default function App() {
                   <div key={link.url} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12 }}>
                     <input type="checkbox" id={link.url}
                       checked={!!checkedLinks[link.url]}
+                      disabled={link.crawlable === false}
                       onChange={e => setCheckedLinks(p => ({ ...p, [link.url]: e.target.checked }))}
-                      style={{ marginTop: 2, flexShrink: 0 }} />
-                    <label htmlFor={link.url} style={{ color: 'var(--text)', cursor: 'pointer' }}>
+                      style={{ marginTop: 2, flexShrink: 0, cursor: link.crawlable === false ? 'not-allowed' : 'pointer' }} />
+                    <label htmlFor={link.url} style={{ color: link.crawlable === false ? 'var(--text-dim)' : 'var(--text)', cursor: link.crawlable === false ? 'not-allowed' : 'pointer' }}>
                       <a href={link.url} target="_blank" rel="noreferrer"
-                        style={{ color: 'var(--cyan)', wordBreak: 'break-all' }}>{link.url}</a>
+                        style={{ color: link.crawlable === false ? 'var(--text-dim)' : 'var(--cyan)', textDecoration: link.crawlable === false ? 'line-through' : 'none', wordBreak: 'break-all' }}>{link.url}</a>
+                      {link.crawlable === false && (
+                        <span style={{ color: 'var(--amber)', fontSize: 11, marginLeft: 8 }} title={link.error_message}>
+                          ⚠️ Uncrawlable ({link.error_message || 'Fetch failed'})
+                        </span>
+                      )}
                       <div style={{ color: 'var(--text-dim)', fontSize: 11, marginTop: 2 }}>
                         {link.source_text} · {link.date}
                       </div>
@@ -373,7 +398,25 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              <button className="btn btn-primary" onClick={handleSelectLinks}>
+
+              {/* Checkbox for including uncrawlable links */}
+              {allLinks.some(link => link.crawlable === false) && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, marginTop: 12, marginBottom: 12, padding: '8px', background: '#1c1c28', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <input type="checkbox" id="include-uncrawlable"
+                    checked={includeUncrawlable}
+                    onChange={e => setIncludeUncrawlable(e.target.checked)}
+                    style={{ cursor: 'pointer' }} />
+                  <label htmlFor="include-uncrawlable" style={{ color: 'var(--text)', cursor: 'pointer' }}>
+                    📖 Include failed/uncrawlable links in References section
+                  </label>
+                </div>
+              )}
+
+              <button
+                className="btn btn-primary"
+                onClick={handleSelectLinks}
+                disabled={Object.values(checkedLinks).filter(Boolean).length === 0 || allLinks.every(link => link.crawlable === false)}
+              >
                 ▶ Research {Object.values(checkedLinks).filter(Boolean).length} selected link(s)
               </button>
             </div>
@@ -385,12 +428,50 @@ export default function App() {
               <div className="approval-label">GUARDRAIL — Human Approval Required</div>
               <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>
                 Review the newsletter above. Approve to publish to GitHub Pages, or reject to stop.
+                To request modifications, type your feedback below and click "Request Revision".
               </p>
+
+              {/* Revision feedback area */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                <textarea
+                  style={{
+                    width: '100%',
+                    minHeight: '60px',
+                    background: '#1a1a24',
+                    border: '1px solid var(--border)',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    color: 'var(--text)',
+                    fontSize: '12px',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder="e.g., Make the third pick sound more conversational, add key emojis, or shorten the summary..."
+                  value={feedbackText}
+                  onChange={e => setFeedbackText(e.target.value)}
+                />
+                <button
+                  className="btn btn-outline"
+                  onClick={handleRevise}
+                  disabled={!feedbackText.trim()}
+                  style={{
+                    width: '100%',
+                    borderColor: 'var(--amber)',
+                    color: 'var(--amber)',
+                    opacity: feedbackText.trim() ? 1 : 0.5,
+                    cursor: feedbackText.trim() ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  🔄 Request Revision
+                </button>
+              </div>
+
               <div className="approval-btns">
-                <button className="btn btn-success" onClick={() => handleApprove(true)}>
+                <button className="btn btn-success" onClick={() => handleApprove(true)} style={{ flex: 1 }}>
                   ✅ Approve & Publish
                 </button>
-                <button className="btn btn-danger" onClick={() => handleApprove(false)}>
+                <button className="btn btn-danger" onClick={() => handleApprove(false)} style={{ flex: 1 }}>
                   ❌ Reject
                 </button>
               </div>

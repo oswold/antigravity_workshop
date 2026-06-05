@@ -1,24 +1,35 @@
 {
+  "sandbox": {
+    "enabled": true
+  },
   "mcpServers": {
-    "whatsapp": {
-      "command": "uv",
+    "docker-gateway": {
+      "command": "docker",
       "args": [
-        "--directory",
-        "${env:WHATSAPP_MCP_PATH}/whatsapp-mcp-server",
+        "mcp",
+        "gateway",
         "run",
-        "main.py"
+        "--profile",
+        "antigravity_mcp"
       ],
-      "description": "lharries/whatsapp-mcp — QR code auth once via mobile app. Go bridge must be running."
+      "type": "stdio"
     },
     "youtube-transcript": {
       "command": "npx",
-      "args": ["-y", "@kimtaeyoon83/mcp-server-youtube-transcript"],
+      "args": [
+        "-y",
+        "@kimtaeyoon83/mcp-server-youtube-transcript"
+      ],
       "description": "Fetches transcripts from public YouTube videos — NO auth needed"
     },
     "fetch": {
       "command": "uvx",
-      "args": ["mcp-server-fetch"],
-      "env": { "PYTHONIOENCODING": "utf-8" },
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "env": {
+        "PYTHONIOENCODING": "utf-8"
+      },
       "description": "Fetches any public URL and returns Markdown — NO auth needed"
     },
     "github": {

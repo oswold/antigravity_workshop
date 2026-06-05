@@ -27,6 +27,18 @@ let sock       = null;
 let isReady    = false;
 let msgStore   = [];   // in-memory store of recent messages
 
+const CACHE_FILE = path.join(AUTH_FOLDER, 'messages_cache.json');
+
+// Load cache
+try {
+  if (fs.existsSync(CACHE_FILE)) {
+    msgStore = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+    console.log(`✅ Loaded ${msgStore.length} cached messages from persistent storage.`);
+  }
+} catch (e) {
+  console.error('⚠️ Error loading message cache:', e);
+}
+
 // ── Connect to WhatsApp ───────────────────────────────────────────────────────
 async function connectToWhatsApp() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
@@ -70,6 +82,7 @@ async function connectToWhatsApp() {
 
   // ── Cache incoming messages ───────────────────────────────────────────────
   sock.ev.on('messages.upsert', ({ messages }) => {
+    let changed = false;
     for (const msg of messages) {
       if (!msg.message) continue;
       const text =
@@ -79,6 +92,9 @@ async function connectToWhatsApp() {
         '';
       if (!text) continue;
 
+      // Avoid duplicates
+      if (msgStore.some(m => m.id === msg.key.id)) continue;
+
       msgStore.push({
         id:        msg.key.id,
         text,
@@ -87,9 +103,18 @@ async function connectToWhatsApp() {
         fromMe:    msg.key.fromMe,
         links:     text.match(URL_REGEX) || [],
       });
+      changed = true;
+    }
 
+    if (changed) {
       // Keep last 500 messages only
       if (msgStore.length > 500) msgStore = msgStore.slice(-500);
+
+      try {
+        fs.writeFileSync(CACHE_FILE, JSON.stringify(msgStore, null, 2));
+      } catch (e) {
+        console.error('⚠️ Error saving message cache:', e);
+      }
     }
   });
 }
@@ -106,6 +131,12 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // GET /user
+  if (parsed.pathname === '/user') {
+    res.end(JSON.stringify(sock ? sock.user : null));
+    return;
+  }
+
   // GET /messages?days=7&self_only=true
   if (parsed.pathname === '/messages') {
     if (!isReady) {
@@ -118,13 +149,27 @@ const server = http.createServer((req, res) => {
     const selfOnly = parsed.query.self_only !== 'false';  // default: true
     const since    = Math.floor(Date.now() / 1000) - days * 86400;
 
+    const getBaseJid = (jid) => {
+      if (!jid) return null;
+      const parts = jid.split('@');
+      const cleanUser = parts[0].split(':')[0];
+      return parts[1] ? `${cleanUser}@${parts[1]}` : cleanUser;
+    };
+    const ownJid = getBaseJid(sock?.user?.id);
+    const ownLid = getBaseJid(sock?.user?.lid);
+
     let messages = msgStore.filter(m => {
       const ts = typeof m.timestamp === 'object'
         ? Number(m.timestamp.low || m.timestamp)
         : Number(m.timestamp);
       if (ts < since) return false;
-      // self_only = messages sent TO yourself (fromMe = true, remoteJid contains own number)
-      if (selfOnly && !m.fromMe) return false;
+      
+      if (selfOnly) {
+        const chatJid = getBaseJid(m.sender);
+        if (chatJid !== ownJid && chatJid !== ownLid) {
+          return false;
+        }
+      }
       return true;
     });
 

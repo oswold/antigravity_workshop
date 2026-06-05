@@ -34,8 +34,10 @@
       │
       ▼
 🔍 Research Agent
-      ├─ YouTube URL  → YouTube Transcript MCP
-      └─ Other URLs   → Fetch MCP (universal web reader)
+      ├─ YouTube URL   → YouTube Transcript MCP
+      ├─ LinkedIn URL  → LinkedIn MCP (ignore robots.txt)
+      ├─ GitHub URL    → Deepwiki MCP (repository analysis)
+      └─ Other URLs    → Fetch MCP (universal web reader)
       │
       ▼
 ✍️  Writer Agent ──► Gemini 2.5 Flash (cloud) or local Gemma via Ollama
@@ -99,9 +101,11 @@ podcasts/
 
 ## 🔌 MCP Tools Used
 
-| MCP Tool | Purpose | Install |
+| MCP Tool | Purpose | Install / Run method |
 |---|---|---|
 | **YouTube Transcript MCP** | Fetch full transcripts from YouTube videos without API keys | `npx -y @kimtaeyoon83/mcp-server-youtube-transcript` |
+| **LinkedIn MCP** | Fetch LinkedIn posts by ignoring robots.txt restrictions | `uvx mcp-server-fetch --ignore-robots-txt` |
+| **Deepwiki MCP** | Connect to DeepWiki HTTP+SSE server for repo analysis | Legacy HTTP+SSE client at `https://mcp.deepwiki.com/mcp` |
 | **Fetch MCP** | Fetch and convert any public URL to clean Markdown text | `uvx mcp-server-fetch` |
 
 These MCPs are invoked as **child subprocesses** over stdio using the MCP JSON-RPC protocol — no separate server to keep running. The Python backend spawns them on demand per-link during the Research step.
@@ -143,6 +147,30 @@ These MCPs are invoked as **child subprocesses** over stdio using the MCP JSON-R
 git clone <repository_url>
 cd podcasts
 ```
+
+---
+
+### Alternative: Docker Setup 🐳
+If you prefer not to install Node.js and Python locally, you can run the entire stack using Docker:
+
+1. Copy `.env.example` to `.env` in the root folder and fill in your keys.
+2. Create the external named volume required by the WhatsApp bridge container:
+   ```bash
+   docker volume create podcasts_whatsapp_auth
+   ```
+3. Build and start the containers in the background:
+   ```bash
+   docker-compose up -d --build
+   ```
+3. The WhatsApp bridge needs you to scan a QR code. Attach to it:
+   ```bash
+   docker attach whatsapp_bridge
+   # Scan the QR code with your phone.
+   # Then press Ctrl+P, Ctrl+Q to detach and leave it running.
+   ```
+4. Access the dashboard at `http://localhost:5173`. You can skip directly to **Step 6**.
+
+---
 
 ### Step 2: WhatsApp Bridge Setup
 The bridge authenticates with WhatsApp using a QR code on first run and saves the session permanently.

@@ -12,9 +12,10 @@ Start the bridge first:
 """
 import re
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-BRIDGE_URL   = "http://localhost:3002"
+import os
+BRIDGE_URL   = os.environ.get("WHATSAPP_BRIDGE_URL", "http://localhost:3002")
 URL_PATTERN  = re.compile(r"https?://[^\s>\"']+")
 
 
@@ -36,10 +37,11 @@ def fetch_whatsapp_self_messages(days: int = 7) -> list[dict]:
     try:
         health = httpx.get(f"{BRIDGE_URL}/health", timeout=5)
     except httpx.ConnectError:
+        repo_path = os.environ.get("REPO_PATH", "<your-repo-path>")
         raise RuntimeError(
             "WhatsApp bridge is not running.\n"
             "Start it with:\n"
-            "  cd <your-repo-path>/agent-pipeline/whatsapp-bridge-js\n"
+            f"  cd {repo_path}/agent-pipeline/whatsapp-bridge-js\n"
             "  node bridge.js\n"
             "Then scan the QR code with your WhatsApp mobile app."
         )
@@ -71,7 +73,7 @@ def fetch_whatsapp_self_messages(days: int = 7) -> list[dict]:
         if isinstance(ts, dict):              # Baileys Long object
             ts = ts.get("low", 0)
         try:
-            date_str = datetime.utcfromtimestamp(int(ts)).strftime("%Y-%m-%d %H:%M UTC")
+            date_str = datetime.fromtimestamp(int(ts), timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
         except Exception:
             date_str = f"message-{i+1}"
 

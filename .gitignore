@@ -36,3 +36,11 @@ Thumbs.db
 
 # ── Gemini CLI internal state ─────────────────────────────────────────────────
 .gemini/tmp/
+
+# ── Generated Output & Logs ───────────────────────────────────────────────────
+logs/
+infographic.png
+
+# ── Temporary script files ───────────────────────────────────────────────────
+*.ps1
+!deploy.ps1

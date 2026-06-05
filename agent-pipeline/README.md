@@ -9,175 +9,140 @@ A fully working **agentic pipeline** that researches, writes, and publishes a te
 
 ```
 agent-pipeline/
-├── backend/               # Express + LangChain pipeline
+├── python-backend/            # FastAPI + LangGraph pipeline (port 8000)
+│   ├── main.py                # Entry point (REST + SSE)
+│   ├── state.py               # Shared in-memory state & event queue
+│   ├── pipeline/
+│   │   ├── graph.py           # LangGraph StateGraph definition
+│   │   ├── runner.py          # Async graph execution
+│   │   ├── nodes/             # Agent steps (fetch, research, write, review, publish)
+│   │   ├── mcps/              # Client wrappers for WhatsApp, YouTube, and Fetch MCPs
+│   │   └── guardrails/        # Input policy logic
+│   └── scheduler/             # APScheduler cron integration
+├── frontend/                  # React + Vite dashboard (port 5173)
 │   └── src/
-│       ├── server.js      # Entry point (port 3001)
-│       ├── state.js       # Shared SSE state
-│       ├── routes/
-│       │   └── pipeline.js  # REST + SSE endpoints
-│       └── pipeline/
-│           ├── index.js          # Pipeline orchestrator (5 nodes)
-│           ├── agents/
-│           │   ├── writerAgent.js    # Gemini ↔ Gemma3 switchable
-│           │   └── researchAgent.js  # Routes links to MCPs
-│           ├── mcps/
-│           │   └── mockMcps.js   # Real MCP stdio clients
-│           └── hooks/
-│               └── piiSanitizer.js  # Pre-generation hook
-└── frontend/              # React + Vite dashboard (port 5173)
-    └── src/
-        ├── App.jsx        # Full dashboard (all-in-one)
-        └── App.css        # Dark glassmorphism theme
+│       ├── App.jsx            # Full dashboard UI with SSE streaming
+│       └── App.css            # Dark glassmorphism theme
+└── whatsapp-bridge-js/        # Baileys-based WhatsApp HTTP bridge (port 3002)
+    └── bridge.js              # Syncs and extracts links from self-messages
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Backend
+Ensure you have your `GEMINI_API_KEY` (and optionally your GitHub PAT and Gmail App Password) ready. 
+Copy `python-backend/.env.example` to `python-backend/.env` and fill it out.
+
+You need three terminal windows to run the stack:
+
+### 1. WhatsApp Bridge
 ```bash
-cd backend
+cd agent-pipeline/whatsapp-bridge-js
 npm install
-# Set your keys (optional — works without them in seed/fallback mode)
-$env:GEMINI_API_KEY = "your_key"
-$env:GITHUB_PERSONAL_ACCESS_TOKEN = "ghp_yourtoken"
-$env:WHATSAPP_MCP_PATH = "C:/Users/yourname/whatsapp-mcp"  # optional, see below
-npm run dev
-# → http://localhost:3001
+node bridge.js
+# → First time only: Scan the QR code with your WhatsApp app
 ```
 
-### 2. Frontend
+### 2. Python Backend
 ```bash
-cd frontend
+cd agent-pipeline/python-backend
+python -m venv venv
+
+# Windows
+.\venv\Scripts\activate
+# Mac/Linux
+source venv/bin/activate
+
+python -m pip install -r requirements.txt
+uvicorn main:app --reload
+# → http://localhost:8000
+```
+
+### 3. Frontend Dashboard
+```bash
+cd agent-pipeline/frontend
 npm install
 npm run dev
 # → http://localhost:5173
 ```
 
----
+## 🐳 Run with Docker (Alternative to Quick Start)
 
-## 🔌 MCP Configuration
+If you have Docker installed, you can run the entire pipeline (frontend, backend, and whatsapp bridge) using Docker Compose.
 
-### Antigravity CLI (`.gemini/settings.json`) — already created for you
-
-```json
-{
-  "mcpServers": {
-    "youtube-transcript": {
-      "command": "npx",
-      "args": ["-y", "@kimtaeyoon83/mcp-server-youtube-transcript"],
-      "description": "NO auth — YouTube timedtext API"
-    },
-    "fetch": {
-      "command": "uvx",
-      "args": ["mcp-server-fetch"],
-      "env": { "PYTHONIOENCODING": "utf-8" },
-      "description": "NO auth — fetches any public URL"
-    },
-    "github": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "description": "OAuth via VS Code GitHub Copilot — NO PAT needed in the IDE"
-    }
-  }
-}
-```
-
-### GitHub — Two Contexts (important!)
-
-| Context | How | Auth |
-|---|---|---|
-| **Antigravity CLI / VS Code** | Remote MCP `https://api.githubcopilot.com/mcp/` | ✅ OAuth (no PAT) via GitHub Copilot |
-| **Node.js Pipeline** (publish step) | GitHub REST API via `fetch()` | ⚠️ `GITHUB_PERSONAL_ACCESS_TOKEN` env var |
-
-The remote OAuth MCP is browser/IDE-bound — it cannot be called from a Node.js child process. The pipeline uses the REST API directly instead.
-
-### All MCPs at a Glance
-
-| MCP | Auth | Use in Pipeline |
-|---|---|---|
-| **WhatsApp MCP** | ⚡ QR code scan (once) | Fetch saved notes/links from personal WhatsApp |
-| YouTube Transcript | ✅ None | Extract transcripts from YT links |
-| Fetch (web) | ✅ None | Scrape articles, podcast show notes |
-| GitHub (IDE) | ✅ OAuth, no PAT | Demo GitHub ops inside Antigravity |
-| GitHub (pipeline) | ⚠️ PAT env var | Publish newsletter to GitHub Pages |
-
----
-
-## 💬 WhatsApp MCP Bridge Setup (lharries/whatsapp-mcp)
-
-The pipeline reads your saved WhatsApp messages/links using a local Go bridge. Without setup it falls back to seed data automatically.
-
-### Prerequisites
-- **Go** 1.21+ — [golang.org/dl](https://golang.org/dl)
-- **uv** Python package manager — `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- **Windows only**: CGO_ENABLED + MSYS2/GCC compiler
-
-### Setup (all platforms)
+1. Create an `.env` file in the **root** of the repository (`podcasts/.env`) and add your secrets (you can copy `agent-pipeline/python-backend/.env.example`).
+2. **Important:** The Docker Compose configuration uses an external named volume `podcasts_whatsapp_auth` to persist the WhatsApp session. You must create this volume first:
 ```bash
-# 1. Clone the repo (anywhere on your machine)
-git clone https://github.com/lharries/whatsapp-mcp.git
-cd whatsapp-mcp
-
-# 2. Windows only — enable CGO (skip on Mac/Linux)
-go env -w CGO_ENABLED=1
-# Also install MSYS2 from https://www.msys2.org and add ucrt64\bin to PATH
-
-# 3. Start the Go bridge (keep this terminal open!)
-cd whatsapp-bridge
-go run main.go
-# → First run: scan QR code with WhatsApp mobile app
-# → Subsequent runs: auto-reconnects (re-auth every ~20 days)
+docker volume create podcasts_whatsapp_auth
 ```
-
-### Configure the pipeline
-```powershell
-# In backend .env or PowerShell before starting backend:
-$env:WHATSAPP_MCP_PATH = "C:/Users/yourname/whatsapp-mcp"
-```
-
-### What it does
-Once running, `fetchWhatsAppNotes(topic, days)` calls the `list_messages` MCP tool
-to retrieve messages matching the topic keyword from the last N days. Any YouTube
-or web links found in those messages are routed to the Research Agent automatically.
-
-> **Workshop tip:** If you don't want to set up the bridge, the pipeline still works —
-> it auto-falls-back to realistic seed data with real links that the Research Agent processes.
-
-## 🦙 Switch to Local Gemma3 (Offline Demo)
-
+3. Run the following command from the root directory to start the containers:
 ```bash
-# 1. Ensure Ollama is running with Gemma3
-ollama run gemma3
-
-# 2. Option A: Select in Dashboard UI → "Local Gemma3 (Ollama)"
-# 3. Option B: Set env var before starting backend
-$env:MODEL = "ollama"
-npm run dev
+docker-compose up -d --build
 ```
+4. **Important:** The WhatsApp bridge requires you to scan a QR code on its first run. To do this, attach to the whatsapp container's terminal:
+```bash
+docker attach whatsapp_bridge
+# Scan the QR code, then press Ctrl+P, Ctrl+Q to detach (leave it running)
+```
+
+The apps will be available at:
+- Dashboard: http://localhost:5173
+- Backend API: http://localhost:8000
 
 ---
 
-## 🎓 Workshop Hands-On Exercises
+## 🔌 Live MCP Integrations
 
-| Exercise | File to Edit | Concept Covered |
+This pipeline relies exclusively on real MCP (Model Context Protocol) subprocess tools — **no mocks**.
+
+| MCP Tool | Execution | Purpose |
 |---|---|---|
-| Change newsletter format | `writerAgent.js` → `WRITER_SYSTEM_PROMPT` | Prompt engineering |
-| Add Reddit as a new source | `mockMcps.js` + `researchAgent.js` | New MCP tool |
-| Enable SQLite memory | `pipeline/index.js` — add SqliteSaver | Agent memory |
-| Add token cache | `writerAgent.js` — add InMemoryCache | Token caching |
-| Create a new Skill | `.agents/skills/new_skill/SKILL.md` | Antigravity skills |
-| Test PII hook | Send topic "my bank password" | Input guardrails |
+| **WhatsApp Bridge** | Local HTTP (`:3002`) | Syncs self-messages and extracts links; persists messages cache |
+| **YouTube Transcript** | `npx @kimtaeyoon83/...` | Fetches full captions for YouTube URLs directly |
+| **LinkedIn MCP** | `uvx mcp-server-fetch --ignore-robots-txt` | Scrapes LinkedIn posts directly by bypassing robot restriction |
+| **Deepwiki MCP** | SSE / HTTP client | Connects to `https://mcp.deepwiki.com/mcp` for complete GitHub repository analysis |
+| **Fetch** | `uvx mcp-server-fetch` | Scrapes and converts any public webpage into Markdown |
+
+---
+
+## 🛡️ Human-in-the-Loop (HITL) Guardrails
+
+The LangGraph pipeline enforces two hard pauses where the agent waits for your explicit UI input before proceeding:
+
+1. **Link Selection:** Before researching, you check/uncheck which extracted URLs should be processed.
+2. **Publish Approval:** Before pushing to GitHub or sending an email, you review the generated newsletter and must explicitly click **Approve & Publish**.
+
+---
+
+## 🦙 Switch to Local Gemma (Offline LLM)
+
+You can run the Writer Agent completely offline on your own hardware:
+1. Ensure Ollama is installed and running: `ollama run gemma`
+2. In the React dashboard, change the Writer Agent Model dropdown to **🦙 Local Gemma (Ollama)**.
+3. The pipeline will automatically route the prompt to `http://localhost:11434` instead of the cloud Gemini API.
 
 ---
 
 ## 📡 API Reference
 
+### FastAPI Backend Endpoints
+The FastAPI backend exposes the following key endpoints:
+
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/pipeline/run` | Start a pipeline run |
-| `GET` | `/api/pipeline/events/:runId` | SSE event stream |
-| `POST` | `/api/pipeline/approve/:runId` | Approve/reject newsletter |
-| `GET` | `/api/pipeline/newsletter/:runId` | Get newsletter markdown |
-| `POST` | `/api/pipeline/cron` | Schedule recurring runs |
-| `DELETE` | `/api/pipeline/cron` | Stop cron |
+| `POST` | `/api/pipeline/run` | Start a new LangGraph run |
+| `POST` | `/api/pipeline/cancel/{runId}` | Halt the pipeline immediately |
+| `GET` | `/api/pipeline/events/{runId}` | SSE live stream of agent steps/logs |
+| `POST` | `/api/pipeline/select-links/{runId}`| Respond to HITL Gate #1 |
+| `POST` | `/api/pipeline/approve/{runId}` | Respond to HITL Gate #2 |
+| `POST` | `/api/pipeline/cron` | Schedule the pipeline via APScheduler |
+
+### WhatsApp Bridge Endpoints
+The WhatsApp bridge runs on port `3002` and exposes:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Returns bridge health status and whether WhatsApp is connected |
+| `GET` | `/user` | Returns current authenticated WhatsApp user details |
+| `GET` | `/messages` | Returns cached self-messages containing links (supports query parameters `days` and `self_only`) |

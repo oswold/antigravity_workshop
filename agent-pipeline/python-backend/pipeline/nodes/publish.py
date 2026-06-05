@@ -3,7 +3,7 @@ Node: publish
 Pushes newsletter to GitHub Pages via REST API + sends via Gmail MCP.
 """
 import os, base64, time
-from datetime import datetime
+from datetime import datetime, timezone
 from state import emit
 import httpx
 
@@ -12,41 +12,50 @@ def publish_node(state: dict) -> dict:
     run_id     = state["run_id"]
     newsletter = state["newsletter"]
 
-    emit(run_id, {
-        "type": "step", "step": "publish", "status": "in_progress",
-        "message": "🚀 Publishing to GitHub Pages...",
-    })
+    trigger = state.get("trigger", "manual")
+    url = None
 
-    owner    = os.environ.get("GITHUB_OWNER", "your-username")
-    repo     = os.environ.get("GITHUB_REPO", "ai-pulse-newsletter")
-    
-    import hashlib, re
-    
-    topic = state.get("topic", "Newsletter")
-    date_str = datetime.utcnow().strftime('%Y-%m-%d')
-    links_str = "".join(sorted(state.get("selected_links", [])))
-    links_hash = hashlib.md5(links_str.encode()).hexdigest()[:6]
-    topic_slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip("-") or "newsletter"
-    
-    filename = f"{topic_slug}-{date_str}-{links_hash}.md"
-    token    = os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN")
+    if trigger == "cron":
+        emit(run_id, {
+            "type": "step", "step": "publish", "status": "in_progress",
+            "message": "🚀 Skipping GitHub Pages publishing (Cron Run)...",
+        })
+    else:
+        emit(run_id, {
+            "type": "step", "step": "publish", "status": "in_progress",
+            "message": "🚀 Publishing to GitHub Pages...",
+        })
+
+        owner    = os.environ.get("GITHUB_OWNER", "your-username")
+        repo     = os.environ.get("GITHUB_REPO", "ai-pulse-newsletter")
+        
+        import hashlib, re
+        
+        topic = state.get("topic", "Newsletter")
+        date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        links_str = "".join(sorted(state.get("selected_links", [])))
+        links_hash = hashlib.md5(links_str.encode()).hexdigest()[:6]
+        topic_slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip("-") or "newsletter"
+        
+        filename = f"{topic_slug}-{date_str}-{links_hash}.md"
+        token    = os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN")
+
+        if not token:
+            emit(run_id, {
+                "type": "error", "tool": "GitHub Pages", "status": "error",
+                "message": "No GITHUB_PERSONAL_ACCESS_TOKEN provided. Cannot publish.",
+            })
+            raise ValueError("No GITHUB_PERSONAL_ACCESS_TOKEN provided.")
+        
+        url = _push_to_github(owner, repo, filename, newsletter, token)
+        display_title = f"{topic} - {date_str} (Hash: {links_hash})"
+        _update_github_index(owner, repo, filename, display_title, token)
+        emit(run_id, {
+            "type": "mcp_call", "tool": "GitHub Pages", "status": "success",
+            "detail": f"Published → {url}",
+        })
 
     from state import pipeline_states
-
-    if not token:
-        emit(run_id, {
-            "type": "error", "tool": "GitHub Pages", "status": "error",
-            "message": "No GITHUB_PERSONAL_ACCESS_TOKEN provided. Cannot publish.",
-        })
-        raise ValueError("No GITHUB_PERSONAL_ACCESS_TOKEN provided.")
-    
-    url = _push_to_github(owner, repo, filename, newsletter, token)
-    display_title = f"{topic} - {date_str} (Hash: {links_hash})"
-    _update_github_index(owner, repo, filename, display_title, token)
-    emit(run_id, {
-        "type": "mcp_call", "tool": "GitHub Pages", "status": "success",
-        "detail": f"Published → {url}",
-    })
 
     emails_str = pipeline_states[run_id].get("emails", "")
     if emails_str.strip():

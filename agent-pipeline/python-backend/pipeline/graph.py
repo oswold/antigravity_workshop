@@ -13,12 +13,18 @@ class PipelineState(TypedDict):
     topic: str
     days: int
     model: str
+    trigger: str                # "manual" or "cron"
     notes: list[dict]           # Raw WhatsApp notes
     selected_links: list[str]   # Links chosen by user in link-review UI
     research_data: list[dict]   # Summarised sources
     newsletter: str             # Final markdown
     approval: bool | None       # HITL publish decision
+    user_feedback: str | None   # HITL user revision feedback
+    revision_count: int         # Track revision iterations
     error: str | None
+    include_uncrawlable: bool   # Whether to include failed/uncrawlable links in references
+    uncrawlable_links: list[str] # List of links that failed checking
+    research_cache: dict        # Cache of pre-fetched research results
 
 
 def build_graph():
@@ -46,11 +52,19 @@ def build_graph():
     g.add_edge("research",    "write")
     g.add_edge("write",       "review")
 
-    # Conditional edge: approve → publish, else → rejected
+    # Conditional edge: approve → publish, feedback → write, else → rejected
+    def route_review(s: PipelineState):
+        if s.get("approval") is True:
+            return "publish"
+        elif s.get("user_feedback"):
+            return "write"
+        else:
+            return "rejected"
+
     g.add_conditional_edges(
         "review",
-        lambda s: "publish" if s.get("approval") else "rejected",
-        {"publish": "publish", "rejected": "rejected"},
+        route_review,
+        {"publish": "publish", "write": "write", "rejected": "rejected"},
     )
     g.add_edge("publish",  END)
     g.add_edge("rejected", END)
