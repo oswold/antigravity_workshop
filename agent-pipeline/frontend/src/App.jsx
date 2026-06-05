@@ -206,23 +206,23 @@ export default function App() {
           <div className="card-title">Pipeline Config</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="field">
-              <label>Research Topic</label>
-              <input value={topic} onChange={e => setTopic(e.target.value)} placeholder="e.g. AI Agents" />
+              <label htmlFor="researchTopic">Research Topic</label>
+              <input id="researchTopic" value={topic} onChange={e => setTopic(e.target.value)} placeholder="e.g. AI Agents" />
             </div>
             <div className="field">
-              <label>Days of notes to fetch</label>
-              <input type="number" min={1} max={30} value={days} onChange={e => setDays(e.target.value)} />
+              <label htmlFor="fetchDays">Days of notes to fetch</label>
+              <input id="fetchDays" type="number" min={1} max={30} value={days} onChange={e => setDays(e.target.value)} />
             </div>
             <div className="field">
-              <label>Writer Agent Model</label>
-              <select value={model} onChange={e => setModel(e.target.value)}>
+              <label htmlFor="writerModel">Writer Agent Model</label>
+              <select id="writerModel" value={model} onChange={e => setModel(e.target.value)}>
                 <option value="gemini">✨ Gemini (cloud)</option>
                 <option value="ollama">🦙 Local Gemma (Ollama)</option>
               </select>
             </div>
             <div className="field">
-              <label>Subscribed Emails (comma-separated)</label>
-              <input value={emails} onChange={e => setEmails(e.target.value)} placeholder="e.g. user@example.com" />
+              <label htmlFor="subscribedEmails">Subscribed Emails (comma-separated)</label>
+              <input id="subscribedEmails" value={emails} onChange={e => setEmails(e.target.value)} placeholder="e.g. user@example.com" />
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleRun} disabled={running}>
@@ -242,8 +242,8 @@ export default function App() {
           <div className="card-title">⏰ Cron Scheduler</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="field">
-              <label>Cron Expression</label>
-              <input value={cronExpr} onChange={e => setCronExpr(e.target.value)} style={{ fontFamily: 'var(--mono)', fontSize: 13 }} />
+              <label htmlFor="cronExpression">Cron Expression</label>
+              <input id="cronExpression" value={cronExpr} onChange={e => setCronExpr(e.target.value)} style={{ fontFamily: 'var(--mono)', fontSize: 13 }} />
             </div>
             <div className="cron-presets">
               {CRON_PRESETS.map(p => (
@@ -252,8 +252,8 @@ export default function App() {
               ))}
             </div>
             <div className="field">
-              <label>Subscribed Emails for Cron</label>
-              <input value={cronEmails} onChange={e => setCronEmails(e.target.value)} placeholder="e.g. user@example.com" />
+              <label htmlFor="subscribedCronEmails">Subscribed Emails for Cron</label>
+              <input id="subscribedCronEmails" value={cronEmails} onChange={e => setCronEmails(e.target.value)} placeholder="e.g. user@example.com" />
             </div>
             <button className={`btn ${cronActive ? 'btn-danger' : 'btn-outline'} btn-sm`} onClick={handleCron}>
               {cronActive ? '⏹ Stop Cron' : '▶ Schedule Cron'}
