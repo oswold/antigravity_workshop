@@ -4,18 +4,18 @@ import { marked } from 'marked';
 const API = '/api/pipeline';
 
 const STEPS = [
-  { key: 'fetch_notes',  icon: '💬', label: 'WhatsApp MCP',   desc: 'Fetch self-messages' },
-  { key: 'link_review',  icon: '🔗', label: 'Link Review',    desc: 'Select links to research' },
-  { key: 'research',     icon: '🔍', label: 'Research Agent',  desc: 'YouTube + Web Fetch MCP' },
-  { key: 'write',        icon: '✍️', label: 'Writer Agent',   desc: 'Generate newsletter' },
-  { key: 'review',       icon: '👤', label: 'Human Review',   desc: 'HITL approval gate' },
-  { key: 'publish',      icon: '🚀', label: 'Publish',         desc: 'GitHub Pages + Gmail' },
+  { key: 'fetch_notes', icon: '💬', label: 'WhatsApp MCP', desc: 'Fetch self-messages' },
+  { key: 'link_review', icon: '🔗', label: 'Link Review', desc: 'Select links to research' },
+  { key: 'research', icon: '🔍', label: 'Research Agent', desc: 'YouTube + Web Fetch MCP' },
+  { key: 'write', icon: '✍️', label: 'Writer Agent', desc: 'Generate newsletter' },
+  { key: 'review', icon: '👤', label: 'Human Review', desc: 'HITL approval gate' },
+  { key: 'publish', icon: '🚀', label: 'Publish', desc: 'GitHub Pages + Gmail' },
 ];
 
 const CRON_PRESETS = [
   { label: 'Every Monday 8am', value: '0 8 * * 1' },
-  { label: 'Daily 7am',        value: '0 7 * * *' },
-  { label: 'Every 30 min',     value: '*/30 * * * *' },
+  { label: 'Daily 7am', value: '0 7 * * *' },
+  { label: 'Every 30 min', value: '*/30 * * * *' },
   { label: 'Every 5 min (test)', value: '*/5 * * * *' },
 ];
 
@@ -25,25 +25,26 @@ const LOG_ICONS = {
 };
 
 export default function App() {
-  const [topic, setTopic]   = useState('AI Agents');
-  const [days, setDays]     = useState(7);
-  const [model, setModel]   = useState('gemini');
+  const [topic, setTopic] = useState('AI Agents');
+  const [days, setDays] = useState(7);
+  const [model, setModel] = useState('gemini');
   const [emails, setEmails] = useState('');
   const [cronExpr, setCronExpr] = useState('0 8 * * 1');
   const [cronActive, setCronActive] = useState(false);
+  const [cronEmails, setCronEmails] = useState('');
 
-  const [runId, setRunId]               = useState(null);
-  const [running, setRunning]           = useState(false);
-  const [stepStatus, setStepStatus]     = useState({});
-  const [stepDetail, setStepDetail]     = useState({});
-  const [logs, setLogs]                 = useState([]);
-  const [newsletter, setNewsletter]     = useState('');
+  const [runId, setRunId] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [stepStatus, setStepStatus] = useState({});
+  const [stepDetail, setStepDetail] = useState({});
+  const [logs, setLogs] = useState([]);
+  const [newsletter, setNewsletter] = useState('');
   const [awaitingApproval, setAwaitingApproval] = useState(false);
-  const [completed, setCompleted]       = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   // Link-review state
   const [awaitingLinks, setAwaitingLinks] = useState(false);
-  const [allLinks, setAllLinks]         = useState([]);
+  const [allLinks, setAllLinks] = useState([]);
   const [checkedLinks, setCheckedLinks] = useState({});
   const [includeUncrawlable, setIncludeUncrawlable] = useState(true);
 
@@ -164,7 +165,7 @@ export default function App() {
       const res = await fetch(`${API}/cron`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ expression: cronExpr, topic, model, days: Number(days) }),
+        body: JSON.stringify({ expression: cronExpr, topic, model, days: Number(days), emails: cronEmails }),
       });
       if (res.ok) setCronActive(true);
     }
@@ -224,7 +225,7 @@ export default function App() {
               <input value={emails} onChange={e => setEmails(e.target.value)} placeholder="e.g. user@example.com" />
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="btn btn-primary" style={{flex: 1}} onClick={handleRun} disabled={running}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleRun} disabled={running}>
                 {running ? '⏳ Running...' : '▶ Run'}
               </button>
               {running && (
@@ -249,6 +250,10 @@ export default function App() {
                 <button key={p.value} className={`cron-preset ${cronExpr === p.value ? 'active' : ''}`}
                   onClick={() => setCronExpr(p.value)}>{p.label}</button>
               ))}
+            </div>
+            <div className="field">
+              <label>Subscribed Emails for Cron</label>
+              <input value={cronEmails} onChange={e => setCronEmails(e.target.value)} placeholder="e.g. user@example.com" />
             </div>
             <button className={`btn ${cronActive ? 'btn-danger' : 'btn-outline'} btn-sm`} onClick={handleCron}>
               {cronActive ? '⏹ Stop Cron' : '▶ Schedule Cron'}
@@ -407,7 +412,11 @@ export default function App() {
                 </div>
               )}
 
-              <button className="btn btn-primary" onClick={handleSelectLinks}>
+              <button
+                className="btn btn-primary"
+                onClick={handleSelectLinks}
+                disabled={Object.values(checkedLinks).filter(Boolean).length === 0 || allLinks.every(link => link.crawlable === false)}
+              >
                 ▶ Research {Object.values(checkedLinks).filter(Boolean).length} selected link(s)
               </button>
             </div>
@@ -421,10 +430,10 @@ export default function App() {
                 Review the newsletter above. Approve to publish to GitHub Pages, or reject to stop.
                 To request modifications, type your feedback below and click "Request Revision".
               </p>
-              
+
               {/* Revision feedback area */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-                <textarea 
+                <textarea
                   style={{
                     width: '100%',
                     minHeight: '60px',
@@ -442,13 +451,13 @@ export default function App() {
                   value={feedbackText}
                   onChange={e => setFeedbackText(e.target.value)}
                 />
-                <button 
-                  className="btn btn-outline" 
+                <button
+                  className="btn btn-outline"
                   onClick={handleRevise}
                   disabled={!feedbackText.trim()}
-                  style={{ 
-                    width: '100%', 
-                    borderColor: 'var(--amber)', 
+                  style={{
+                    width: '100%',
+                    borderColor: 'var(--amber)',
                     color: 'var(--amber)',
                     opacity: feedbackText.trim() ? 1 : 0.5,
                     cursor: feedbackText.trim() ? 'pointer' : 'not-allowed'

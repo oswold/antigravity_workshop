@@ -46,3 +46,5 @@ services:
 
 volumes:
   whatsapp_auth:
+    external: true
+    name: podcasts_whatsapp_auth

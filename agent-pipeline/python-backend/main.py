@@ -155,8 +155,9 @@ async def set_cron(req: Request):
     topic = body.get("topic", "AI")
     model = body.get("model", "gemini")
     days = int(body.get("days", 7))
+    emails = body.get("emails", "")
     try:
-        schedule_pipeline(expression, topic, model, days, graph)
+        schedule_pipeline(expression, topic, model, days, emails, graph)
         return {"ok": True, "expression": expression}
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)

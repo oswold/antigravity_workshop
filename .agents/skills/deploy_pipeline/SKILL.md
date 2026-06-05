@@ -39,6 +39,12 @@ cp .env.example .env
 
 ## 🚀 Bring Up: Docker Compose (Recommended)
 
+**Pre-requisite:** Create the external named volume to store WhatsApp credentials:
+```bash
+docker volume create podcasts_whatsapp_auth
+```
+
+Start the containers:
 ```bash
 docker-compose up -d --build
 ```
@@ -46,7 +52,7 @@ docker-compose up -d --build
 Docker will:
 1. Build images for all three services (uses cache for unchanged layers — fast on reruns)
 2. Start containers: `ai_backend` (`:8000`), `ai_frontend` (`:5173`), `whatsapp_bridge`
-3. Mount the named volume `whatsapp_auth → /app/auth_info_baileys` to persist WhatsApp session
+3. Mount the external named volume `whatsapp_auth → /app/auth_info_baileys` to persist WhatsApp session
 
 **Verify containers are running:**
 ```bash

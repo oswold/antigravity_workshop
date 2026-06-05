@@ -13,6 +13,7 @@ class PipelineState(TypedDict):
     topic: str
     days: int
     model: str
+    trigger: str                # "manual" or "cron"
     notes: list[dict]           # Raw WhatsApp notes
     selected_links: list[str]   # Links chosen by user in link-review UI
     research_data: list[dict]   # Summarised sources

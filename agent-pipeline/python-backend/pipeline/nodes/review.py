@@ -9,6 +9,13 @@ from state import emit, pipeline_states
 def review_node(state: dict) -> dict:
     run_id = state["run_id"]
 
+    if state.get("trigger") == "cron":
+        emit(run_id, {
+            "type": "step", "step": "review", "status": "done",
+            "detail": "✅ Auto-approved (Cron Run)",
+        })
+        return {**state, "approval": True, "user_feedback": None}
+
     emit(run_id, {
         "type": "step", "step": "review", "status": "awaiting",
         "message": "👤 [GUARDRAIL] Waiting for human approval to publish...",

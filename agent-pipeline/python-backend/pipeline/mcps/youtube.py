@@ -3,7 +3,9 @@ YouTube Transcript MCP client.
 Uses: npx -y @kimtaeyoon83/mcp-server-youtube-transcript
 No auth required — hits YouTube timedtext API directly.
 """
-import json, subprocess, time
+import json, subprocess, time, os
+from queue import Queue, Empty
+from threading import Thread
 
 
 def fetch_youtube_transcript(url: str) -> dict:
@@ -23,6 +25,7 @@ def fetch_youtube_transcript(url: str) -> dict:
 
 
 def _call_mcp_tool(cmd: list, tool_name: str, tool_args: dict) -> str:
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"}
     init_req = json.dumps({
         "jsonrpc": "2.0", "id": 1, "method": "initialize",
         "params": {"protocolVersion": "2024-11-05",
@@ -35,17 +38,35 @@ def _call_mcp_tool(cmd: list, tool_name: str, tool_args: dict) -> str:
     })
 
     proc = subprocess.Popen(
-        cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True, encoding="utf-8", errors="replace", shell=True,
+        cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=None,
+        text=True, encoding="utf-8", errors="replace", env=env, shell=False,
     )
     proc.stdin.write(init_req + "\n")
     proc.stdin.flush()
+
+    q = Queue()
+    def enqueue_output(out, queue):
+        try:
+            for line in iter(out.readline, ''):
+                queue.put(line)
+        except Exception:
+            pass
+        finally:
+            out.close()
+
+    t = Thread(target=enqueue_output, args=(proc.stdout, q), daemon=True)
+    t.start()
 
     initialized = False
     deadline = time.time() + 45
 
     while time.time() < deadline:
-        line = proc.stdout.readline()
+        try:
+            timeout = max(0.1, deadline - time.time())
+            line = q.get(timeout=timeout)
+        except Empty:
+            break
+
         if not line:
             break
         try:
@@ -57,6 +78,7 @@ def _call_mcp_tool(cmd: list, tool_name: str, tool_args: dict) -> str:
                 proc.stdin.flush()
             elif msg.get("id") == 2:
                 proc.kill()
+                proc.wait()
                 if msg.get("error"):
                     raise RuntimeError(msg["error"]["message"])
                 return msg.get("result", {}).get("content", [{}])[0].get("text", "")
@@ -64,4 +86,6 @@ def _call_mcp_tool(cmd: list, tool_name: str, tool_args: dict) -> str:
             continue
 
     proc.kill()
+    proc.wait()
     raise TimeoutError(f"YouTube MCP timed out for {tool_args.get('url', 'unknown URL')}")
+

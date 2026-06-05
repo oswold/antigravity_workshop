@@ -5,9 +5,11 @@ Pauses the pipeline so the user can select/deselect links before research runs.
 import time
 import concurrent.futures
 from state import emit, pipeline_states
-from pipeline.nodes.research import is_youtube
+from pipeline.nodes.research import is_youtube, is_linkedin, is_github
 from pipeline.mcps.youtube import fetch_youtube_transcript
 from pipeline.mcps.fetch import fetch_web_article
+from pipeline.mcps.linkedin import fetch_linkedin_post
+from pipeline.mcps.deepwiki import fetch_github_summary
 
 
 def link_review_node(state: dict) -> dict:
@@ -40,26 +42,64 @@ def link_review_node(state: dict) -> dict:
 
     def check_one_link(link_item):
         url = link_item["url"]
-        tool_name = "YouTube Transcript MCP" if is_youtube(url) else "Fetch MCP"
+        if is_youtube(url):
+            tool_name = "YouTube Transcript MCP"
+        elif is_linkedin(url):
+            tool_name = "LinkedIn MCP"
+        elif is_github(url):
+            tool_name = "Deepwiki MCP"
+        else:
+            tool_name = "Fetch MCP"
         try:
             if is_youtube(url):
                 res = fetch_youtube_transcript(url)
+            elif is_linkedin(url):
+                res = fetch_linkedin_post(url)
+            elif is_github(url):
+                res = fetch_github_summary(url)
             else:
                 res = fetch_web_article(url)
             return link_item, True, res, None
         except Exception as e:
             return link_item, False, None, str(e)
 
-    # Pre-check links in parallel to avoid stalling the pipeline
+    # Pre-check links in parallel — each link has a 30-second timeout
+    # so slow sources (DeepWiki, YouTube) don't block the HITL gate
+    LINK_CHECK_TIMEOUT = 30
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(all_links), 5)) as executor:
-        futures = [executor.submit(check_one_link, item) for item in all_links]
-        for fut in concurrent.futures.as_completed(futures):
-            item, crawlable, res, err = fut.result()
+        future_to_item = {executor.submit(check_one_link, item): item for item in all_links}
+        for fut in concurrent.futures.as_completed(future_to_item, timeout=LINK_CHECK_TIMEOUT * len(all_links)):
+            try:
+                item, crawlable, res, err = fut.result(timeout=LINK_CHECK_TIMEOUT)
+            except concurrent.futures.TimeoutError:
+                item = future_to_item[fut]
+                crawlable, res, err = False, None, "Timed out after 30s"
+            except Exception as e:
+                item = future_to_item[fut]
+                crawlable, res, err = False, None, str(e)
             item["crawlable"] = crawlable
             if crawlable:
                 research_cache[item["url"]] = res
+                emit(run_id, {"type": "step", "step": "link_review", "status": "in_progress",
+                              "message": f"✅ Crawled: {item['url'][:80]}"})
             else:
                 item["error_message"] = err
+                emit(run_id, {"type": "step", "step": "link_review", "status": "in_progress",
+                               "message": f"⚠️ Uncrawlable: {item['url'][:80]} — {err[:60]}"})
+
+    if state.get("trigger") == "cron":
+        selected = [link["url"] for link in all_links if link.get("crawlable") != False]
+        emit(run_id, {
+            "type": "step", "step": "link_review", "status": "done",
+            "detail": f"Auto-selected all {len(selected)} crawlable links (Cron Run)",
+        })
+        return {
+            **state,
+            "selected_links": selected,
+            "include_uncrawlable": False,
+            "uncrawlable_links": [link["url"] for link in all_links if link.get("crawlable") == False],
+            "research_cache": research_cache,
+        }
 
     emit(run_id, {
         "type": "step", "step": "link_review", "status": "awaiting",

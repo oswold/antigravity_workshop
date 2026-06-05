@@ -20,6 +20,8 @@ This file (`GEMINI.md`) provides persistent background context and instructions 
   - `WhatsApp Bridge` — Baileys-based Node.js HTTP bridge at `http://localhost:3002` (QR auth once)
   - `YouTube Transcript MCP` — `npx -y @kimtaeyoon83/mcp-server-youtube-transcript` (no auth)
   - `Fetch MCP` — `uvx mcp-server-fetch` (reads any public URL as Markdown, no auth)
+  - `LinkedIn MCP` — Subprocess wrapper calling `mcp-server-fetch` with `--ignore-robots-txt` to fetch LinkedIn posts
+  - `Deepwiki MCP` — Connects to DeepWiki HTTP+SSE legacy server at `https://mcp.deepwiki.com/mcp` for repository summaries
   - `GitHub MCP` — `https://api.githubcopilot.com/mcp/` (OAuth via VS Code, no PAT needed inside Antigravity)
 - **Advanced Tools:** Use the `browser_subagent` for live web visual routing when necessary. Use `--approval-mode default` to enforce HITL before any tool execution.
 
@@ -29,7 +31,7 @@ fetch_notes → link_review [HITL #1] → research → write → review [HITL #2
 ```
 - `fetch_notes` — calls WhatsApp bridge, applies domain guardrail
 - `link_review` — pauses for human link selection; auto-cancels if 0 links found
-- `research` — routes YouTube URLs to YouTube Transcript MCP; all others to Fetch MCP
+- `research` — routes YouTube URLs to YouTube Transcript MCP, LinkedIn URLs to LinkedIn MCP, GitHub repository URLs to Deepwiki MCP, and all others to Fetch MCP
 - `write` — calls Gemini 2.5 Flash (cloud) or Gemma (Ollama local)
 - `review` — pauses for human approval; can be manually cancelled via Stop button
 - `publish` — pushes newsletter to GitHub Pages via REST API; sends real email via smtplib; updates `index.html`

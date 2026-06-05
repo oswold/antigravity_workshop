@@ -72,11 +72,15 @@ npm run dev
 If you have Docker installed, you can run the entire pipeline (frontend, backend, and whatsapp bridge) using Docker Compose.
 
 1. Create an `.env` file in the **root** of the repository (`podcasts/.env`) and add your secrets (you can copy `agent-pipeline/python-backend/.env.example`).
-2. Run the following command from the root directory:
+2. **Important:** The Docker Compose configuration uses an external named volume `podcasts_whatsapp_auth` to persist the WhatsApp session. You must create this volume first:
+```bash
+docker volume create podcasts_whatsapp_auth
+```
+3. Run the following command from the root directory to start the containers:
 ```bash
 docker-compose up -d --build
 ```
-3. **Important:** The WhatsApp bridge requires you to scan a QR code on its first run. To do this, attach to the whatsapp container's terminal:
+4. **Important:** The WhatsApp bridge requires you to scan a QR code on its first run. To do this, attach to the whatsapp container's terminal:
 ```bash
 docker attach whatsapp_bridge
 # Scan the QR code, then press Ctrl+P, Ctrl+Q to detach (leave it running)
@@ -94,8 +98,10 @@ This pipeline relies exclusively on real MCP (Model Context Protocol) subprocess
 
 | MCP Tool | Execution | Purpose |
 |---|---|---|
-| **WhatsApp Bridge** | Local HTTP (`:3002`) | Extracts URLs from messages sent to your own number |
+| **WhatsApp Bridge** | Local HTTP (`:3002`) | Syncs self-messages and extracts links; persists messages cache |
 | **YouTube Transcript** | `npx @kimtaeyoon83/...` | Fetches full captions for YouTube URLs directly |
+| **LinkedIn MCP** | `uvx mcp-server-fetch --ignore-robots-txt` | Scrapes LinkedIn posts directly by bypassing robot restriction |
+| **Deepwiki MCP** | SSE / HTTP client | Connects to `https://mcp.deepwiki.com/mcp` for complete GitHub repository analysis |
 | **Fetch** | `uvx mcp-server-fetch` | Scrapes and converts any public webpage into Markdown |
 
 ---
@@ -120,6 +126,7 @@ You can run the Writer Agent completely offline on your own hardware:
 
 ## 📡 API Reference
 
+### FastAPI Backend Endpoints
 The FastAPI backend exposes the following key endpoints:
 
 | Method | Endpoint | Description |
@@ -130,3 +137,12 @@ The FastAPI backend exposes the following key endpoints:
 | `POST` | `/api/pipeline/select-links/{runId}`| Respond to HITL Gate #1 |
 | `POST` | `/api/pipeline/approve/{runId}` | Respond to HITL Gate #2 |
 | `POST` | `/api/pipeline/cron` | Schedule the pipeline via APScheduler |
+
+### WhatsApp Bridge Endpoints
+The WhatsApp bridge runs on port `3002` and exposes:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Returns bridge health status and whether WhatsApp is connected |
+| `GET` | `/user` | Returns current authenticated WhatsApp user details |
+| `GET` | `/messages` | Returns cached self-messages containing links (supports query parameters `days` and `self_only`) |
