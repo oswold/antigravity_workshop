@@ -145,7 +145,7 @@ These MCPs are invoked as **child subprocesses** over stdio using the MCP JSON-R
 ### Step 1: Clone the Repository
 ```bash
 git clone <repository_url>
-cd podcasts
+cd antigravity_workshop
 ```
 
 ---
