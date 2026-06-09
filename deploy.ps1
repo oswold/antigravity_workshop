@@ -177,11 +177,11 @@ function Stop-AllServices {
     
     if ($ActiveConnections) {
         foreach ($Conn in $ActiveConnections) {
-            $PID = $Conn.OwningProcess
-            $Proc = Get-Process -Id $PID -ErrorAction SilentlyContinue
+            $ProcId = $Conn.OwningProcess
+            $Proc = Get-Process -Id $ProcId -ErrorAction SilentlyContinue
             if ($Proc) {
-                Write-Host "[-] Killing process '$($Proc.Name)' (PID: $PID) listening on port $($Conn.LocalPort)..." -ForegroundColor Red
-                Stop-Process -Id $PID -Force -ErrorAction SilentlyContinue
+                Write-Host "[-] Killing process '$($Proc.Name)' (PID: $ProcId) listening on port $($Conn.LocalPort)..." -ForegroundColor Red
+                Stop-Process -Id $ProcId -Force -ErrorAction SilentlyContinue
             }
         }
         Write-Host "[+] Local processes terminated." -ForegroundColor Green
