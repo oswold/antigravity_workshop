@@ -48,7 +48,9 @@ def publish_node(state: dict) -> dict:
             raise ValueError("No GITHUB_PERSONAL_ACCESS_TOKEN provided.")
         
         url = _push_to_github(owner, repo, filename, newsletter, token)
-        display_title = f"{topic} - {date_str} (Hash: {links_hash})"
+        now = datetime.now(timezone.utc)
+        date_formatted = now.strftime(f'%B {now.day}, %Y')
+        display_title = f"{topic} - {date_formatted}"
         _update_github_index(owner, repo, filename, display_title, token)
         emit(run_id, {
             "type": "mcp_call", "tool": "GitHub Pages", "status": "success",
@@ -104,14 +106,22 @@ def _push_to_github(owner, repo, filename, content, token):
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
     }
-    encoded = base64.b64encode(content.encode()).decode()
 
-    # Check if file exists (get SHA for update)
+    # Check if file exists and get content to compare
     sha = None
     r = httpx.get(api, headers=headers)
     if r.status_code == 200:
-        sha = r.json().get("sha")
+        data = r.json()
+        sha = data.get("sha")
+        try:
+            existing_content = base64.b64decode(data.get("content", "")).decode("utf-8")
+            if existing_content.replace("\r", "") == content.replace("\r", ""):
+                # File exists and content is identical; skip pushing duplicate commit
+                return f"https://{owner}.github.io/{repo}/newsletters/{filename}"
+        except Exception:
+            pass
 
+    encoded = base64.b64encode(content.encode()).decode()
     body = {"message": f"📰 Auto-publish newsletter: {filename}",
             "content": encoded, "branch": "main"}
     if sha:
@@ -138,18 +148,60 @@ def _update_github_index(owner, repo, filename, topic, token):
     else:
         html_content = "<!DOCTYPE html>\n<html>\n<head><title>AI Pulse Newsletters</title></head>\n<body>\n<h1>AI Pulse Newsletters</h1>\n<ul>\n</ul>\n</body>\n</html>"
     
-    new_link = f'<li><a href="newsletters/{filename}">{topic}</a></li>'
-    if f"newsletters/{filename}" in html_content:
-        # File already exists in the index, no need to add duplicate link
-        return
-        
-    if "<ul>" in html_content:
-        html_content = html_content.replace("<ul>", f"<ul>\n  {new_link}")
+    original_html_content = html_content
+    
+    filename_no_ext = filename.rsplit('.', 1)[0]
+    import re
+    
+    # Exclude the current file's line to handle reruns
+    lines = html_content.splitlines()
+    other_html = "\n".join([line for line in lines if f"newsletters/{filename_no_ext}" not in line])
+    
+    # Calculate version if this topic + date already exists
+    pattern = rf'>{re.escape(topic)}(?:\s*\(Version\s*(\d+)\))?\s*</a>'
+    matches = re.findall(pattern, other_html)
+    if matches:
+        versions = []
+        for m in matches:
+            if m == "":
+                versions.append(1)
+            else:
+                versions.append(int(m))
+        next_version = max(versions) + 1
+        final_topic = f"{topic} (Version {next_version})"
     else:
-        html_content += f"\n<ul>\n  {new_link}\n</ul>"
+        final_topic = topic
+
+    # Determine the indentation and attributes of existing li elements if possible
+    match = re.search(r'^([ \t]*)<li([^>]*)>', html_content, re.MULTILINE)
+    if match:
+        indent = match.group(1)
+        li_attrs = match.group(2)
+        new_link = f"{indent}<li{li_attrs}><a href=\"newsletters/{filename_no_ext}\">{final_topic}</a></li>"
+    else:
+        # Fallback to detecting ul's indentation or using standard 6 spaces
+        match_ul = re.search(r'^([ \t]*)<ul>', html_content, re.MULTILINE)
+        indent = (match_ul.group(1) + "  ") if match_ul else "      "
+        new_link = f'{indent}<li class="newsletter-item"><a href="newsletters/{filename_no_ext}">{final_topic}</a></li>'
+
+    # Check if the link already exists in index.html (matching with or without .md extension)
+    existing_pattern = rf'^[ \t]*<li[^>]*><a[^>]*href=["\']newsletters/{re.escape(filename_no_ext)}(\.md)?["\'][^>]*>.*?</a></li>'
+    if re.search(existing_pattern, html_content, re.MULTILINE):
+        # Link exists. Replace it with the newly formatted one to correct/update it.
+        html_content = re.sub(existing_pattern, new_link, html_content, flags=re.MULTILINE)
+    else:
+        # Link does not exist. Insert it at the top of the list.
+        if "<ul>" in html_content:
+            html_content = html_content.replace("<ul>", f"<ul>\n{new_link}")
+        else:
+            html_content += f"\n<ul>\n{new_link}\n</ul>"
         
+    if html_content.replace("\r", "") == original_html_content.replace("\r", ""):
+        # Content did not change (e.g. rerun with identical formatted links); skip pushing duplicate commit
+        return
+
     encoded = base64.b64encode(html_content.encode("utf-8")).decode()
-    body = {"message": f"🌐 Update index.html with {topic}", "content": encoded, "branch": "main"}
+    body = {"message": f"🌐 Update index.html with {final_topic}", "content": encoded, "branch": "main"}
     if sha:
         body["sha"] = sha
         
