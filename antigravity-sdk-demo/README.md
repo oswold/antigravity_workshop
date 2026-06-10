@@ -17,7 +17,18 @@ Create a `.env` file in the repository root (or copy `.env.example`):
 ```bash
 GEMINI_API_KEY=your_api_key_here
 ```
-The SDK reads `GEMINI_API_KEY` automatically via `load_dotenv()`.
+Alternatively, you can set it directly in your terminal session:
+
+*   **PowerShell:**
+    ```powershell
+    $env:GEMINI_API_KEY="your_api_key_here"
+    ```
+*   **bash/zsh:**
+    ```bash
+    export GEMINI_API_KEY="your_api_key_here"
+    ```
+
+The SDK reads `GEMINI_API_KEY` automatically.
 
 ### 3️⃣ Ollama (optional, for scripts 10 & 11)
 ```bash
