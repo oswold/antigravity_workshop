@@ -4,8 +4,23 @@ Welcome to **Agentic AI 101: Build Your Automated Newsletter & Research Agent Pi
 
 ---
 
+## 📦 Repositories to Fork & Clone
+Please fork and clone the following repositories before the workshop begins:
+
+1.  **Workshop Project Repo** (FastAPI backend, React frontend, WhatsApp bridge, deployment scripts, and SDK demos):
+    *   **Repository URL**: [github.com/oswold/antigravity_workshop](https://github.com/oswold/antigravity_workshop)
+    *   **Clone command**:
+        ```bash
+        git clone https://github.com/oswold/antigravity_workshop
+        ```
+2.  **Newsletter Output Template Repo** (The target repository where the agent will publish your compiled HTML and markdown newsletters):
+    *   **Repository URL**: [github.com/oswold/ai-pulse-newsletter](https://github.com/oswold/ai-pulse-newsletter)
+    *   *(Note: You must fork this repository to your own GitHub account first so that your PAT has permission to publish to it).*
+
+---
+
 ## ⚡ 1. Antigravity CLI (Gemini CLI)
-The **Gemini CLI** (also referred to as the Antigravity CLI) is a command-line interface used to run agent sessions, execute reusable prompt-driven skills, and test Model Context Protocol (MCP) tools directly.
+The **Gemini CLI** (also referred to as the Antigravity CLI) is a command-line interface used to run agent sessions, execute reusable prompt-driven skills, and test Model Context Protocol (MCP) tools directly. More information can be found at [antigravity.google/product/antigravity-cli](https://antigravity.google/product/antigravity-cli).
 
 ### 📦 System Requirements & Software
 *   **Node.js & npm**: Version `18.0.0` or higher ([nodejs.org](https://nodejs.org))
@@ -31,7 +46,9 @@ The **Gemini CLI** (also referred to as the Antigravity CLI) is a command-line i
 ---
 
 ## 🖥️ 2. Antigravity IDE (Newsletter Generator Application)
-The **Newsletter Generator Application** is the core workshop project. It runs a local React frontend, a FastAPI backend orchestrating a LangGraph state graph, and a Node.js Baileys-based WhatsApp bridge.
+The **Newsletter Generator Application** is the core workshop project. It runs inside the **Antigravity IDE** alongside a local React frontend, a FastAPI backend orchestrating a LangGraph state graph, and a Node.js Baileys-based WhatsApp bridge. 
+
+You can download the **Antigravity IDE and Agent Manager** at [antigravity.google/download](https://antigravity.google/download).
 
 ### 🔐 Accounts & Credentials
 To run the full end-to-end pipeline with publishing, you must prepare:
@@ -88,7 +105,7 @@ If you prefer running services directly on your host machine:
 ---
 
 ## 🦙 3. Antigravity SDK
-The **Antigravity SDK** (`google-antigravity`) is a Python library used to build custom agentic workflows, memory systems, parallel subagents, and local model integrations.
+The **Antigravity SDK** (`google-antigravity`) is a Python library used to build custom agentic workflows, memory systems, parallel subagents, and local model integrations. The open-source repository is hosted at [github.com/google-antigravity/antigravity-sdk-python](https://github.com/google-antigravity/antigravity-sdk-python).
 
 ### 📦 Installation
 In your Python environment, install the SDK and dependencies:
@@ -143,3 +160,21 @@ GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
 # Docker MCP Gateway Authentication (Optional)
 MCP_GATEWAY_AUTH_TOKEN=5rzfkug01zyeg...
 ```
+
+---
+
+## 🌐 Useful Reference URLs
+*   **Antigravity IDE & Agent Manager Download**: [antigravity.google/download](https://antigravity.google/download)
+*   **Antigravity CLI Product Page**: [antigravity.google/product/antigravity-cli](https://antigravity.google/product/antigravity-cli)
+*   **Antigravity SDK Repository**: [github.com/google-antigravity/antigravity-sdk-python](https://github.com/google-antigravity/antigravity-sdk-python)
+*   **Antigravity Docs**: [antigravity.google/docs/home](https://antigravity.google/docs/home)
+*   **Antigravity CLI Code README**: [github.com/google-antigravity/antigravity-cli/blob/main/README.md](https://github.com/google-antigravity/antigravity-cli/blob/main/README.md)
+*   **Antigravity SDK Python Examples**: [github.com/google-antigravity/antigravity-sdk-python/tree/main/examples](https://github.com/google-antigravity/antigravity-sdk-python/tree/main/examples)
+*   **Google AI Studio (API Keys)**: [aistudio.google.com](https://aistudio.google.com)
+*   **Ollama (Local Models)**: [ollama.com](https://ollama.com)
+*   **Model Context Protocol (MCP) Introduction**: [modelcontextprotocol.io/docs/getting-started/intro](https://modelcontextprotocol.io/docs/getting-started/intro)
+*   **Docker AI MCP Gateway Guide**: [docs.docker.com/ai/mcp-catalog-and-toolkit/mcp-gateway](https://docs.docker.com/ai/mcp-catalog-and-toolkit/mcp-gateway/)
+*   **Antigravity MCP Documentation**: [antigravity.google/docs/mcp](https://antigravity.google/docs/mcp)
+
+
+
