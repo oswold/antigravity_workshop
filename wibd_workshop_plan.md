@@ -145,7 +145,7 @@ These MCPs are invoked as **child subprocesses** over stdio using the MCP JSON-R
 ### Step 1: Clone the Repository
 ```bash
 git clone <repository_url>
-cd podcasts
+cd antigravity_workshop
 ```
 
 ---
@@ -257,12 +257,12 @@ Open your browser at **http://localhost:5173**. You should see the AI Pulse dash
 
 ```bash
 # Pull and run the Gemma model locally
-ollama run gemma
+ollama run gemma3
 ```
 
 Once running, select **🦙 Local Gemma (Ollama)** in the dashboard's Writer Agent Model dropdown. The backend connects to Ollama at `http://localhost:11434` automatically — no additional configuration needed.
 
-**How to verify Gemma is being used:** Watch your terminal where `ollama run gemma` is running. When the Write Agent step executes, you will see Ollama printing tokens in real time and your CPU/GPU usage will spike.
+**How to verify Gemma is being used:** Watch your terminal where `ollama run gemma3` is running. When the Write Agent step executes, you will see Ollama printing tokens in real time and your CPU/GPU usage will spike.
 
 ### Step 6: Create the GitHub Pages Repository
 
@@ -536,7 +536,7 @@ HITL nodes run **synchronously in a thread pool** (via `run_in_executor`). They 
 | `//` in GitHub API URL | `GITHUB_OWNER` is empty in `.env` | Set `GITHUB_OWNER=your-github-username` |
 | `uvicorn not recognized` | Running outside the virtual environment | Run `.\venv\Scripts\activate` first |
 | `pip.exe blocked` by policy | Windows Application Control | Use `python -m pip install ...` instead |
-| Gemma not responding | Ollama not running | Run `ollama run gemma` in a separate terminal |
+| Gemma not responding | Ollama not running | Run `ollama run gemma3` in a separate terminal |
 
 ---
 
