@@ -27,7 +27,7 @@ def publish_node(state: dict) -> dict:
         })
 
         owner    = os.environ.get("GITHUB_OWNER", "your-username")
-        repo     = os.environ.get("GITHUB_REPO", "ai-pulse-newsletter")
+        repo     = os.environ.get("GITHUB_REPO", "sakthis-corner-newsletter")
         
         import hashlib, re
         
@@ -66,7 +66,7 @@ def publish_node(state: dict) -> dict:
             import smtplib
             from email.mime.text import MIMEText
             msg = MIMEText(newsletter, "plain")
-            msg["Subject"] = "AI Pulse Weekly Digest"
+            msg["Subject"] = "Sakthi's Corner Weekly Digest"
             msg["From"] = gmail_user
             msg["To"] = ", ".join(emails_list)
             
@@ -136,7 +136,7 @@ def _update_github_index(owner, repo, filename, topic, token):
         sha = data.get("sha")
         html_content = base64.b64decode(data.get("content", "")).decode("utf-8")
     else:
-        html_content = "<!DOCTYPE html>\n<html>\n<head><title>AI Pulse Newsletters</title></head>\n<body>\n<h1>AI Pulse Newsletters</h1>\n<ul>\n</ul>\n</body>\n</html>"
+        html_content = "<!DOCTYPE html>\n<html>\n<head><title>Sakthi's Corner Newsletters</title></head>\n<body>\n<h1>Sakthi's Corner Newsletters</h1>\n<ul>\n</ul>\n</body>\n</html>"
     
     new_link = f'<li><a href="newsletters/{filename}">{topic}</a></li>'
     if f"newsletters/{filename}" in html_content:

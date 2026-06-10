@@ -1,7 +1,5 @@
-"""
-FastAPI entry point — AI Pulse Newsletter Agent Pipeline
-SSE streaming + REST endpoints mirroring the original Node.js server.
-"""
+# FastAPI entry point — Sakthi's Corner Newsletter Agent Pipeline
+# SSE streaming + REST endpoints mirroring the original Node.js server.
 
 import asyncio
 import os
@@ -27,7 +25,7 @@ async def lifespan(app: FastAPI):
     yield
     scheduler.shutdown(wait=False)
 
-app = FastAPI(title="AI Pulse Backend (Python)", lifespan=lifespan)
+app = FastAPI(title="Sakthi's Corner Backend (Python)", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
