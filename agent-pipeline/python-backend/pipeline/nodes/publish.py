@@ -48,7 +48,9 @@ def publish_node(state: dict) -> dict:
             raise ValueError("No GITHUB_PERSONAL_ACCESS_TOKEN provided.")
         
         url = _push_to_github(owner, repo, filename, newsletter, token)
-        display_title = f"{topic} - {date_str} (Hash: {links_hash})"
+        dt = datetime.strptime(date_str, '%Y-%m-%d')
+        formatted_date = dt.strftime(f'%B {dt.day}, %Y')
+        display_title = f"{topic} - {formatted_date}"
         _update_github_index(owner, repo, filename, display_title, token)
         emit(run_id, {
             "type": "mcp_call", "tool": "GitHub Pages", "status": "success",
@@ -136,17 +138,18 @@ def _update_github_index(owner, repo, filename, topic, token):
         sha = data.get("sha")
         html_content = base64.b64decode(data.get("content", "")).decode("utf-8")
     else:
-        html_content = "<!DOCTYPE html>\n<html>\n<head><title>AI Pulse Newsletters</title></head>\n<body>\n<h1>AI Pulse Newsletters</h1>\n<ul>\n</ul>\n</body>\n</html>"
+        html_content = "<!DOCTYPE html>\n<html>\n<head><title>WIBD Corner Newsletters</title></head>\n<body>\n<h1>WIBD Corner Newsletters</h1>\n<ul>\n</ul>\n</body>\n</html>"
     
-    new_link = f'<li><a href="newsletters/{filename}">{topic}</a></li>'
-    if f"newsletters/{filename}" in html_content:
+    href_name = filename[:-3] if filename.endswith(".md") else filename
+    new_link = f'<li class="newsletter-item"><a href="newsletters/{href_name}">{topic}</a></li>'
+    if f"newsletters/{href_name}" in html_content:
         # File already exists in the index, no need to add duplicate link
         return
         
     if "<ul>" in html_content:
-        html_content = html_content.replace("<ul>", f"<ul>\n  {new_link}")
+        html_content = html_content.replace("<ul>", f"<ul>\n    {new_link}")
     else:
-        html_content += f"\n<ul>\n  {new_link}\n</ul>"
+        html_content += f"\n<ul>\n    {new_link}\n</ul>"
         
     encoded = base64.b64encode(html_content.encode("utf-8")).decode()
     body = {"message": f"🌐 Update index.html with {topic}", "content": encoded, "branch": "main"}
