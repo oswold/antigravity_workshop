@@ -1,7 +1,7 @@
 {
-  "name": "ai-pulse-dashboard",
+  "name": "wibd-corner-dashboard",
   "version": "1.0.0",
-  "description": "AI Pulse Newsletter — Agent Pipeline Dashboard",
+  "description": "WIBD Corner Newsletter — Agent Pipeline Dashboard",
   "type": "module",
   "scripts": {
     "dev": "vite",

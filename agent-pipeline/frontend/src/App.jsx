@@ -186,7 +186,7 @@ export default function App() {
       {/* ── Topbar ── */}
       <header className="topbar">
         <div className="topbar-logo">
-          <h1>⚡ AI Pulse</h1>
+          <h1>⚡ WIBD Corner</h1>
           <span className="topbar-badge">WIBD Workshop</span>
         </div>
         <div className="topbar-status">
