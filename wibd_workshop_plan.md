@@ -126,15 +126,18 @@ These MCPs are invoked as **child subprocesses** over stdio using the MCP JSON-R
 | **Node.js & npm** | 18+ | [nodejs.org](https://nodejs.org) |
 | **Git** | any | [git-scm.com](https://git-scm.com) |
 | **VS Code** | any | [code.visualstudio.com](https://code.visualstudio.com) |
-| **Gemini CLI** | latest | `npm install -g @google/gemini-cli` |
+| **Antigravity IDE & Agent Manager** | latest | [antigravity.google/download](https://antigravity.google/download) |
+| **Antigravity CLI (Gemini CLI)** | latest | [antigravity.google/product/antigravity-cli](https://antigravity.google/product/antigravity-cli) or `npm install -g @google/gemini-cli` |
+| **Antigravity SDK** | latest | [github.com/google-antigravity/antigravity-sdk-python](https://github.com/google-antigravity/antigravity-sdk-python) or `pip install google-antigravity` |
 | **Ollama** *(optional, for local Gemma)* | latest | [ollama.com](https://ollama.com) |
 | **uv / uvx** *(for Fetch MCP)* | latest | `pip install uv` |
+
 
 ### 3. API Keys & Tokens to Prepare
 - `GEMINI_API_KEY` — from [aistudio.google.com](https://aistudio.google.com)
 - `GITHUB_PERSONAL_ACCESS_TOKEN` — Fine-grained PAT with **Contents: Read & Write** permission on your newsletter repo
 - `GITHUB_OWNER` — Your GitHub username
-- `GITHUB_REPO` — A new empty repo called `ai-pulse-newsletter` (create it beforehand)
+- `GITHUB_REPO` — Fork and clone the newsletter template repo: `https://github.com/oswold/ai-pulse-newsletter`
 - `GMAIL_USER` — Your Gmail address
 - `GMAIL_APP_PASSWORD` — A [Gmail App Password](https://myaccount.google.com/apppasswords) (not your login password)
 
@@ -144,8 +147,9 @@ These MCPs are invoked as **child subprocesses** over stdio using the MCP JSON-R
 
 ### Step 1: Clone the Repository
 ```bash
-git clone <repository_url>
-cd podcasts
+# Fork and clone the workshop repository:
+git clone https://github.com/oswold/antigravity_workshop
+cd antigravity_workshop
 ```
 
 ---
@@ -257,12 +261,12 @@ Open your browser at **http://localhost:5173**. You should see the AI Pulse dash
 
 ```bash
 # Pull and run the Gemma model locally
-ollama run gemma
+ollama run gemma3
 ```
 
 Once running, select **🦙 Local Gemma (Ollama)** in the dashboard's Writer Agent Model dropdown. The backend connects to Ollama at `http://localhost:11434` automatically — no additional configuration needed.
 
-**How to verify Gemma is being used:** Watch your terminal where `ollama run gemma` is running. When the Write Agent step executes, you will see Ollama printing tokens in real time and your CPU/GPU usage will spike.
+**How to verify Gemma is being used:** Watch your terminal where `ollama run gemma3` is running. When the Write Agent step executes, you will see Ollama printing tokens in real time and your CPU/GPU usage will spike.
 
 ### Step 6: Create the GitHub Pages Repository
 
@@ -536,7 +540,7 @@ HITL nodes run **synchronously in a thread pool** (via `run_in_executor`). They 
 | `//` in GitHub API URL | `GITHUB_OWNER` is empty in `.env` | Set `GITHUB_OWNER=your-github-username` |
 | `uvicorn not recognized` | Running outside the virtual environment | Run `.\venv\Scripts\activate` first |
 | `pip.exe blocked` by policy | Windows Application Control | Use `python -m pip install ...` instead |
-| Gemma not responding | Ollama not running | Run `ollama run gemma` in a separate terminal |
+| Gemma not responding | Ollama not running | Run `ollama run gemma3` in a separate terminal |
 
 ---
 
@@ -627,3 +631,11 @@ git merge feature/my-change
 | Mermaid Live Editor | https://mermaid.live |
 | GitHub Fine-grained PATs | https://github.com/settings/tokens?type=beta |
 | Gmail App Passwords | https://myaccount.google.com/apppasswords |
+| Antigravity Docs | https://antigravity.google/docs/home |
+| Antigravity CLI | https://github.com/google-antigravity/antigravity-cli/blob/main/README.md |
+| Antigravity SDK Examples | https://github.com/google-antigravity/antigravity-sdk-python/tree/main/examples |
+| Model Context Protocol Intro | https://modelcontextprotocol.io/docs/getting-started/intro |
+| Docker AI MCP Gateway | https://docs.docker.com/ai/mcp-catalog-and-toolkit/mcp-gateway/ |
+| Antigravity MCP Docs | https://antigravity.google/docs/mcp |
+
+

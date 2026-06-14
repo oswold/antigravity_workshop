@@ -115,9 +115,9 @@ def _ollama(system: str, user_prompt: str, selected: str) -> str:
     from langchain_core.messages import SystemMessage, HumanMessage
     import os
     base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-    model_name = "gemma"
-    if selected == "gemma3":
-        model_name = "gemma3"
+    model_name = "gemma3"
+    if selected == "gemma":
+        model_name = "gemma"
     llm = ChatOllama(model=model_name, base_url=base_url, temperature=0.7)
     resp = llm.invoke([SystemMessage(content=system), HumanMessage(content=user_prompt)])
     return resp.content
